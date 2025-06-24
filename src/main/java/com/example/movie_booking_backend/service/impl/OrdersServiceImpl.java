@@ -183,9 +183,12 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders> impleme
     @Transactional
     public void handleExpiredOrders() {
         // 找出所有已超时的待支付订单
+        // 计算过期时间点：当前时间减去订单过期时间（分钟）
+        LocalDateTime expirationTime = LocalDateTime.now().minusMinutes(ORDER_EXPIRATION_MINUTES);
+        
         List<Orders> expiredOrders = this.list(new QueryWrapper<Orders>()
                 .eq("status", "PENDING")
-                .le("payment_deadline", LocalDateTime.now()));
+                .le("created_at", expirationTime));
 
         for (Orders order : expiredOrders) {
             releaseSeatsForOrder(order);
