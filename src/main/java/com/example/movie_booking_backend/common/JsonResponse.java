@@ -50,6 +50,16 @@ public class JsonResponse<R> implements Serializable {
         return this;
     }
 
+    public static <R> JsonResponse<R> failure(int code, String message) {
+        JsonResponse<R> response = new JsonResponse<>();
+        response.status = false;
+        response.code = code;
+        response.message = message;
+        response.data = null;
+        return response;
+    }
+
+
     public JsonResponse<R> addOtherData(String key, Object value) {
         this.otherData.put(key, value);
         return this;

@@ -83,11 +83,11 @@ public class GlobalExceptionHandler {
      * 处理业务异常
      */
     @ExceptionHandler(BusinessException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
     public JsonResponse<String> handleBusinessException(BusinessException e) {
         log.warn("业务异常: {}", e.getMessage());
-        return JsonResponse.failure(e.getMessage());
+        return JsonResponse.failure(40001, e.getMessage());
     }
+
 
     /**
      * 处理通用异常
