@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.movie_booking_backend.mapper.SeatsMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.example.movie_booking_backend.model.domain.Seats">
+        <id column="id" property="id" />
+        <result column="hall_id" property="hallId" />
+        <result column="seat_number" property="seatNumber" />
+        <result column="seat_row" property="seatRow" />
+        <result column="seat_column" property="seatColumn" />
+        <result column="seat_type" property="seatType" />
+        <result column="status" property="status" />
+        <result column="price_multiplier" property="priceMultiplier" />
+        <result column="created_at" property="createdAt" />
+        <result column="updated_at" property="updatedAt" />
+        <result column="is_deleted" property="deleted" />
+    </resultMap>
+
+</mapper>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.movie_booking_backend.mapper.MoviesMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.example.movie_booking_backend.model.domain.Movies">
+        <id column="id" property="id" />
+        <result column="title" property="title" />
+        <result column="description" property="description" />
+        <result column="director" property="director" />
+        <result column="actors" property="actors" />
+        <result column="genre" property="genre" />
+        <result column="duration_minutes" property="durationMinutes" />
+        <result column="release_date" property="releaseDate" />
+        <result column="end_date" property="endDate" />
+        <result column="poster_url" property="posterUrl" />
+        <result column="trailer_url" property="trailerUrl" />
+        <result column="base_price" property="basePrice" />
+        <result column="status" property="status" />
+        <result column="rating" property="rating" />
+        <result column="rating_count" property="ratingCount" />
+        <result column="view_count" property="viewCount" />
+        <result column="language" property="language" />
+        <result column="country" property="country" />
+        <result column="created_at" property="createdAt" />
+        <result column="updated_at" property="updatedAt" />
+        <result column="is_deleted" property="deleted" />
+    </resultMap>
+
+</mapper>
