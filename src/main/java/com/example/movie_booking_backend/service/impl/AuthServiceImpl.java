@@ -15,7 +15,7 @@ import com.example.movie_booking_backend.service.IAuthService;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.password.PasswordEncoder;
+// 移除PasswordEncoder导入
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,8 +30,7 @@ public class AuthServiceImpl implements IAuthService {
     @Autowired
     private RolesMapper rolesMapper;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    // 移除PasswordEncoder注入
 
     @Autowired
     private JwtUtils jwtUtils;
@@ -48,8 +47,8 @@ public class AuthServiceImpl implements IAuthService {
             throw new BusinessException("用户不存在");
         }
 
-        // 验证密码
-        if (!passwordEncoder.matches(loginDTO.getPassword(), user.getPassword())) {
+        // 验证密码（明文比较）
+        if (!loginDTO.getPassword().equals(user.getPassword())) {
             throw new BusinessException("密码错误");
         }
 
@@ -132,7 +131,7 @@ public class AuthServiceImpl implements IAuthService {
         // 创建用户
         Users user = new Users();
         user.setUsername(registerDTO.getUsername());
-        user.setPassword(passwordEncoder.encode(registerDTO.getPassword()));
+        user.setPassword(registerDTO.getPassword()); // 使用明文密码
         user.setEmail(registerDTO.getEmail());
         user.setPhone(registerDTO.getPhone());
         user.setRoleId(userRole.getId());
@@ -149,4 +148,4 @@ public class AuthServiceImpl implements IAuthService {
     public void logout(String token) {
         // 简单实现，直接返回，不做处理
     }
-} 
+}

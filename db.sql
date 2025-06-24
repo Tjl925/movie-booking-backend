@@ -539,21 +539,21 @@ SELECT 3, id
 FROM permissions
 WHERE name IN ('movie:view', 'session:view', 'order:view', 'order:create', 'payment:process');
 
--- 插入系统管理员用户（密码：admin123）
+-- 插入系统管理员用户
 INSERT INTO users (username, password, email, phone, role_id, status, login_count)
-VALUES ('superadmin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVEFDa', 'superadmin@movie.com',
+VALUES ('superadmin', 'admin123', 'superadmin@movie.com',
         '13800138000', 1, 'ACTIVE', 0);
 
--- 插入管理员用户（密码：admin123）
+-- 插入管理员用户
 INSERT INTO users (username, password, email, phone, role_id, status, login_count)
-VALUES ('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVEFDa', 'admin@movie.com', '13800138001', 2,
+VALUES ('admin', 'admin123', 'admin@movie.com', '13800138001', 2,
         'ACTIVE', 0);
 
--- 插入测试用户（密码：123456）
+-- 插入测试用户
 INSERT INTO users (username, password, email, phone, role_id, status, login_count)
-VALUES ('testuser', '$2a$10$8.UnVuG9HHgffUDAlk8qfOuVGkqRzgVymGe07xd00DMxs.AQubh4a', 'test@movie.com', '13800138002', 3,
+VALUES ('testuser', '123456', 'test@movie.com', '13800138002', 3,
         'ACTIVE', 0),
-       ('staff', '$2a$10$8.UnVuG9HHgffUDAlk8qfOuVGkqRzgVymGe07xd00DMxs.AQubh4a', 'staff@movie.com', '13800138003', 3,
+       ('staff', '123456', 'staff@movie.com', '13800138003', 3,
         'ACTIVE', 0);
 
 -- 插入影厅数据

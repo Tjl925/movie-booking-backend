@@ -14,7 +14,7 @@ import com.example.movie_booking_backend.service.IUsersService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.password.PasswordEncoder;
+// 移除PasswordEncoder导入
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,8 +39,7 @@ public class UsersServiceImpl extends ServiceImpl<UsersMapper, Users> implements
     @Autowired
     private RolesMapper rolesMapper;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    // 移除PasswordEncoder注入
 
     @Override
     public Page<UserVO> listUsers(Page<Users> page, String username, String email, String status) {
@@ -97,7 +96,7 @@ public class UsersServiceImpl extends ServiceImpl<UsersMapper, Users> implements
         Users user = new Users();
         BeanUtils.copyProperties(userCreationDTO, user);
 
-        user.setPassword(passwordEncoder.encode(userCreationDTO.getPassword()));
+        user.setPassword(userCreationDTO.getPassword()); // 使用明文密码
         user.setStatus("ACTIVE");
         user.setLoginCount(0);
         user.setCreatedAt(LocalDateTime.now());
@@ -140,7 +139,7 @@ public class UsersServiceImpl extends ServiceImpl<UsersMapper, Users> implements
             throw new BusinessException("用户不存在");
         }
 
-        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setPassword(newPassword); // 使用明文密码
         user.setUpdatedAt(LocalDateTime.now());
         this.updateById(user);
     }
