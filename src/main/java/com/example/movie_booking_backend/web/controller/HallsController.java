@@ -30,9 +30,9 @@ public class HallsController {
 
 
     /**
-    * 描述：根据Id 查询
-    *
-    */
+     * 描述：根据Id 查询
+     *
+     */
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     @ResponseBody
     public JsonResponse<Halls> getById(@PathVariable("id") Long id)throws Exception {

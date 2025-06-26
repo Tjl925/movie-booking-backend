@@ -2,8 +2,6 @@ package com.example.movie_booking_backend.web.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.movie_booking_backend.common.JsonResponse;
-import com.example.movie_booking_backend.common.annotation.RequireRole;
-import com.example.movie_booking_backend.common.constants.PermissionConstants;
 import com.example.movie_booking_backend.model.domain.Movies;
 import com.example.movie_booking_backend.model.dto.MovieDTO;
 import com.example.movie_booking_backend.service.IMoviesService;
@@ -36,7 +34,6 @@ public class MoviesController {
 
     @ApiOperation("【后台】分页获取电影列表")
     @GetMapping("/admin")
-    @RequireRole({PermissionConstants.ROLE_ADMIN, PermissionConstants.ROLE_SUPER_ADMIN})
     public JsonResponse<Page<Movies>> getMovieList(
             @ApiParam("页码") @RequestParam(defaultValue = "1") Integer current,
             @ApiParam("每页大小") @RequestParam(defaultValue = "10") Integer size,
@@ -48,7 +45,6 @@ public class MoviesController {
 
     @ApiOperation("【后台】创建电影")
     @PostMapping
-    @RequireRole({PermissionConstants.ROLE_ADMIN, PermissionConstants.ROLE_SUPER_ADMIN})
     public JsonResponse<Movies> createMovie(@Valid @RequestBody MovieDTO movieDTO) {
         Movies movie = moviesService.createMovie(movieDTO);
         return JsonResponse.success(movie, "电影创建成功");
@@ -56,7 +52,6 @@ public class MoviesController {
 
     @ApiOperation("【后台】更新电影信息")
     @PutMapping("/{id}")
-    @RequireRole({PermissionConstants.ROLE_ADMIN, PermissionConstants.ROLE_SUPER_ADMIN})
     public JsonResponse<Movies> updateMovie(@PathVariable Long id, @Valid @RequestBody MovieDTO movieDTO) {
         Movies updatedMovie = moviesService.updateMovie(id, movieDTO);
         return JsonResponse.success(updatedMovie, "电影更新成功");
@@ -64,7 +59,6 @@ public class MoviesController {
 
     @ApiOperation("【后台】删除电影")
     @DeleteMapping("/{id}")
-    @RequireRole({PermissionConstants.ROLE_SUPER_ADMIN})
     public JsonResponse<String> deleteMovie(@PathVariable Long id) {
         moviesService.removeById(id); // 逻辑删除，依赖于MyBatis Plus的默认配置
         return JsonResponse.successMessage("电影删除成功");
@@ -72,7 +66,6 @@ public class MoviesController {
 
     @ApiOperation("【后台】更新电影状态")
     @PutMapping("/{id}/status")
-    @RequireRole({PermissionConstants.ROLE_ADMIN, PermissionConstants.ROLE_SUPER_ADMIN})
     public JsonResponse<String> updateMovieStatus(@PathVariable Long id, @RequestParam String status) {
         moviesService.updateMovieStatus(id, status);
         return JsonResponse.successMessage("电影状态更新成功");
@@ -80,7 +73,6 @@ public class MoviesController {
 
     @ApiOperation("【后台】上传电影海报")
     @PostMapping("/poster/upload")
-    @RequireRole({PermissionConstants.ROLE_ADMIN, PermissionConstants.ROLE_SUPER_ADMIN})
     public JsonResponse<String> uploadPoster(@RequestParam("file") MultipartFile file) {
         try {
             String url = moviesService.uploadPoster(file);
@@ -92,7 +84,6 @@ public class MoviesController {
 
     @ApiOperation("【后台】上传电影视频")
     @PostMapping("/video/upload")
-    @RequireRole({PermissionConstants.ROLE_ADMIN, PermissionConstants.ROLE_SUPER_ADMIN})
     public JsonResponse<String> uploadVideo(@RequestParam("file") MultipartFile file) {
         try {
             String url = moviesService.uploadVideo(file);

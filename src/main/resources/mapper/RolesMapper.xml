@@ -16,11 +16,14 @@
     <select id="findPermissionsByRoleId" resultType="com.example.movie_booking_backend.model.domain.Permissions">
         SELECT p.* FROM permissions p
         JOIN role_permissions rp ON p.id = rp.permission_id
-        WHERE rp.role_id = #{roleId} AND p.is_deleted = 0
+        WHERE rp.role_id = #{roleId} AND p.is_deleted = 0 AND rp.is_deleted = 0
     </select>
 
     <delete id="deletePermissionsByRoleId">
-        DELETE FROM role_permissions WHERE role_id = #{roleId}
+        UPDATE role_permissions
+        SET is_deleted = 1,
+            updated_at = NOW()
+        WHERE role_id = #{roleId}
     </delete>
 
     <insert id="insertRolePermissions">

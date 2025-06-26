@@ -1,8 +1,6 @@
 package com.example.movie_booking_backend.web.controller;
 
 import com.example.movie_booking_backend.common.JsonResponse;
-import com.example.movie_booking_backend.common.annotation.RequireRole;
-import com.example.movie_booking_backend.common.constants.PermissionConstants;
 import com.example.movie_booking_backend.model.dto.SessionDTO;
 import com.example.movie_booking_backend.model.vo.SeatVO;
 import com.example.movie_booking_backend.model.vo.SessionVO;
@@ -38,7 +36,6 @@ public class MovieSessionsController {
 
     @ApiOperation("【后台】创建场次")
     @PostMapping
-    @RequireRole({PermissionConstants.ROLE_ADMIN, PermissionConstants.ROLE_SUPER_ADMIN})
     public JsonResponse<SessionVO> createSession(@Valid @RequestBody SessionDTO sessionDTO) {
         SessionVO sessionVO = movieSessionsService.createSession(sessionDTO);
         return JsonResponse.success(sessionVO, "场次创建成功");
@@ -46,7 +43,6 @@ public class MovieSessionsController {
 
     @ApiOperation("【后台】更新场次")
     @PutMapping("/{id}")
-    @RequireRole({PermissionConstants.ROLE_ADMIN, PermissionConstants.ROLE_SUPER_ADMIN})
     public JsonResponse<SessionVO> updateSession(@PathVariable Long id, @Valid @RequestBody SessionDTO sessionDTO) {
         SessionVO sessionVO = movieSessionsService.updateSession(id, sessionDTO);
         return JsonResponse.success(sessionVO, "场次更新成功");
@@ -54,7 +50,6 @@ public class MovieSessionsController {
 
     @ApiOperation("【后台】删除场次")
     @DeleteMapping("/{id}")
-    @RequireRole({PermissionConstants.ROLE_ADMIN, PermissionConstants.ROLE_SUPER_ADMIN})
     public JsonResponse<String> deleteSession(@PathVariable Long id) {
         movieSessionsService.deleteSession(id);
         return JsonResponse.successMessage("场次删除成功");

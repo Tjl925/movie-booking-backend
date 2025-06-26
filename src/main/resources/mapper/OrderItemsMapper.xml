@@ -25,6 +25,8 @@
         FROM order_items oi
                  JOIN orders o ON oi.order_id = o.id
         WHERE o.session_id = #{sessionId}
+          AND o.is_deleted = 0
+          AND oi.is_deleted = 0
     </select>
 
 </mapper>

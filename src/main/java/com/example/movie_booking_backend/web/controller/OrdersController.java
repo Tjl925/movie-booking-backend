@@ -2,8 +2,6 @@ package com.example.movie_booking_backend.web.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.movie_booking_backend.common.JsonResponse;
-import com.example.movie_booking_backend.common.annotation.RequireRole;
-import com.example.movie_booking_backend.common.constants.PermissionConstants;
 import com.example.movie_booking_backend.model.dto.OrderCreationDTO;
 import com.example.movie_booking_backend.model.vo.OrderVO;
 import com.example.movie_booking_backend.service.IOrdersService;
@@ -33,7 +31,6 @@ public class OrdersController {
 
     @ApiOperation("用户下单（锁定座位，生成待支付订单）")
     @PostMapping
-    @RequireRole({PermissionConstants.ROLE_USER, PermissionConstants.ROLE_ADMIN, PermissionConstants.ROLE_SUPER_ADMIN})
     public JsonResponse<OrderVO> createOrder(@Valid @RequestBody OrderCreationDTO orderCreationDTO, HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         OrderVO orderVO = ordersService.createOrder(orderCreationDTO, userId);
@@ -42,7 +39,6 @@ public class OrdersController {
 
     @ApiOperation("用户支付订单（模拟支付成功）")
     @PostMapping("/{id}/pay")
-    @RequireRole({PermissionConstants.ROLE_USER, PermissionConstants.ROLE_ADMIN, PermissionConstants.ROLE_SUPER_ADMIN})
     public JsonResponse<String> payOrder(@PathVariable Long id, HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         OrderVO order = ordersService.getOrderDetails(id, userId);
@@ -55,7 +51,6 @@ public class OrdersController {
 
     @ApiOperation("用户取消订单")
     @PostMapping("/{id}/cancel")
-    @RequireRole({PermissionConstants.ROLE_USER, PermissionConstants.ROLE_ADMIN, PermissionConstants.ROLE_SUPER_ADMIN})
     public JsonResponse<String> cancelOrder(@PathVariable Long id, HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         ordersService.cancelOrder(id, userId);
@@ -64,7 +59,6 @@ public class OrdersController {
 
     @ApiOperation("用户查询订单详情")
     @GetMapping("/{id}")
-    @RequireRole({PermissionConstants.ROLE_USER, PermissionConstants.ROLE_ADMIN, PermissionConstants.ROLE_SUPER_ADMIN})
     public JsonResponse<OrderVO> getOrderDetails(@PathVariable Long id, HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         OrderVO orderVO = ordersService.getOrderDetails(id, userId);
@@ -73,10 +67,9 @@ public class OrdersController {
 
     @ApiOperation("用户查询自己的订单列表")
     @GetMapping
-    @RequireRole({PermissionConstants.ROLE_USER, PermissionConstants.ROLE_ADMIN, PermissionConstants.ROLE_SUPER_ADMIN})
     public JsonResponse<Page<OrderVO>> getUserOrders(@RequestParam(defaultValue = "1") Integer current,
-                                                    @RequestParam(defaultValue = "10") Integer size,
-                                                    HttpServletRequest request) {
+                                                     @RequestParam(defaultValue = "10") Integer size,
+                                                     HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         Page<OrderVO> page = ordersService.getUserOrders(new Page<>(current, size), userId);
         return JsonResponse.success(page);

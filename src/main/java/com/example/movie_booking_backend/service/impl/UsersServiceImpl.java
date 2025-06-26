@@ -39,7 +39,6 @@ public class UsersServiceImpl extends ServiceImpl<UsersMapper, Users> implements
     @Autowired
     private RolesMapper rolesMapper;
 
-    // 移除PasswordEncoder注入
 
     @Override
     public Page<UserVO> listUsers(Page<Users> page, String username, String email, String status) {
@@ -56,8 +55,6 @@ public class UsersServiceImpl extends ServiceImpl<UsersMapper, Users> implements
             queryWrapper.eq("status", status);
         }
 
-        queryWrapper.orderByDesc("created_at");
-
         Page<Users> usersPage = this.page(page, queryWrapper);
 
         Page<UserVO> voPage = new Page<>();
@@ -69,7 +66,7 @@ public class UsersServiceImpl extends ServiceImpl<UsersMapper, Users> implements
                     BeanUtils.copyProperties(user, vo);
                     Roles role = rolesMapper.selectById(user.getRoleId());
                     if (role != null) {
-                        vo.setRoleName(role.getDisplayName());
+                        vo.setRoleName(role.getName());
                     }
                     return vo;
                 })

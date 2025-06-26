@@ -1,8 +1,6 @@
 package com.example.movie_booking_backend.web.controller;
 
 import com.example.movie_booking_backend.common.JsonResponse;
-import com.example.movie_booking_backend.common.annotation.RequireRole;
-import com.example.movie_booking_backend.common.constants.PermissionConstants;
 import com.example.movie_booking_backend.model.domain.Permissions;
 import com.example.movie_booking_backend.service.IPermissionsService;
 import io.swagger.annotations.Api;
@@ -33,7 +31,6 @@ public class PermissionsController {
 
     @ApiOperation("获取所有可用权限列表")
     @GetMapping
-    @RequireRole({PermissionConstants.ROLE_ADMIN, PermissionConstants.ROLE_SUPER_ADMIN})
     public JsonResponse<List<Permissions>> getAllPermissions() {
         return JsonResponse.success(permissionsService.list());
     }

@@ -2,8 +2,6 @@ package com.example.movie_booking_backend.web.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.movie_booking_backend.common.JsonResponse;
-import com.example.movie_booking_backend.common.annotation.RequireRole;
-import com.example.movie_booking_backend.common.constants.PermissionConstants;
 import com.example.movie_booking_backend.model.domain.Users;
 import com.example.movie_booking_backend.model.dto.ResetPasswordDTO;
 import com.example.movie_booking_backend.model.dto.UserCreationDTO;
@@ -36,7 +34,6 @@ public class UsersController {
 
     @ApiOperation("获取用户列表")
     @GetMapping
-    @RequireRole({PermissionConstants.ROLE_ADMIN, PermissionConstants.ROLE_SUPER_ADMIN})
     public JsonResponse<Page<UserVO>> getUserList(
             @ApiParam("页码") @RequestParam(defaultValue = "1") Integer current,
             @ApiParam("每页大小") @RequestParam(defaultValue = "10") Integer size,
@@ -51,7 +48,6 @@ public class UsersController {
 
     @ApiOperation("根据ID获取用户")
     @GetMapping("/{id}")
-    @RequireRole({PermissionConstants.ROLE_ADMIN, PermissionConstants.ROLE_SUPER_ADMIN})
     public JsonResponse<UserVO> getUserById(@PathVariable Long id) {
         Users user = usersService.getById(id);
         if (user == null || user.getDeleted()) {
@@ -66,7 +62,6 @@ public class UsersController {
 
     @ApiOperation("创建用户")
     @PostMapping
-    @RequireRole({PermissionConstants.ROLE_ADMIN, PermissionConstants.ROLE_SUPER_ADMIN})
     public JsonResponse<UserVO> createUser(@Valid @RequestBody UserCreationDTO userCreationDTO) {
         Users user = usersService.createUser(userCreationDTO);
         UserVO userVO = new UserVO();
@@ -76,7 +71,6 @@ public class UsersController {
 
     @ApiOperation("更新用户")
     @PutMapping("/{id}")
-    @RequireRole({PermissionConstants.ROLE_ADMIN, PermissionConstants.ROLE_SUPER_ADMIN})
     public JsonResponse<UserVO> updateUser(@PathVariable Long id, @Valid @RequestBody UserUpdateDTO userUpdateDTO) {
         Users user = usersService.updateUser(id, userUpdateDTO);
         UserVO userVO = new UserVO();
@@ -86,7 +80,6 @@ public class UsersController {
 
     @ApiOperation("删除用户")
     @DeleteMapping("/{id}")
-    @RequireRole({PermissionConstants.ROLE_SUPER_ADMIN})
     public JsonResponse<String> deleteUser(@PathVariable Long id) {
         Users user = usersService.getById(id);
         if (user == null || user.getDeleted()) {
@@ -121,7 +114,6 @@ public class UsersController {
 
     @ApiOperation("更新用户状态")
     @PutMapping("/{id}/status")
-    @RequireRole({PermissionConstants.ROLE_ADMIN, PermissionConstants.ROLE_SUPER_ADMIN})
     public JsonResponse<String> updateUserStatus(
             @PathVariable Long id,
             @RequestParam String status) {
@@ -143,7 +135,6 @@ public class UsersController {
 
     @ApiOperation("重置用户密码")
     @PutMapping("/{id}/reset-password")
-    @RequireRole({PermissionConstants.ROLE_SUPER_ADMIN})
     public JsonResponse<String> resetPassword(@PathVariable Long id, @Valid @RequestBody ResetPasswordDTO resetPasswordDTO) {
         usersService.resetPassword(id, resetPasswordDTO.getNewPassword());
         return JsonResponse.successMessage("密码重置成功");

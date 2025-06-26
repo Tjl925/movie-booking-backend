@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.movie_booking_backend.mapper.UserGroupsMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.example.movie_booking_backend.model.domain.UserGroups">
+        <id column="id" property="id" />
+        <result column="name" property="name" />
+        <result column="description" property="description" />
+        <result column="type" property="type" />
+        <result column="created_at" property="createdAt" />
+        <result column="updated_at" property="updatedAt" />
+        <result column="is_deleted" property="deleted" />
+    </resultMap>
+
+    <!-- 查找所有未删除的用户分组 -->
+    <select id="selectAllByIsDeletedFalse" resultMap="BaseResultMap">
+        SELECT id, name, description, type, created_at, updated_at, is_deleted
+        FROM user_groups
+        WHERE is_deleted = 0
+    </select>
+
+    <!-- 根据ID查找未删除的用户分组 -->
+    <select id="selectByIdAndIsDeletedFalse" resultMap="BaseResultMap">
+        SELECT id, name, description, type, created_at, updated_at, is_deleted
+        FROM user_groups
+        WHERE id = #{id} AND is_deleted = 0
+    </select>
+
+    <!-- 根据名称查找未删除的用户分组 -->
+    <select id="selectByNameAndIsDeletedFalse" resultMap="BaseResultMap">
+        SELECT id, name, description, type, created_at, updated_at, is_deleted
+        FROM user_groups
+        WHERE name = #{name} AND is_deleted = 0
+    </select>
+
+    <!-- 根据用户ID查找该用户所属的所有分组 -->
+    <select id="selectGroupsByUserId" resultMap="BaseResultMap">
+        SELECT
+        g.id, g.name, g.description, g.type, g.created_at, g.updated_at, g.is_deleted
+        FROM user_groups g
+        JOIN user_group_relations r ON g.id = r.group_id
+        WHERE r.user_id = #{userId} AND g.is_deleted = 0 AND r.is_deleted = 0
+    </select>
+
+    <!-- 根据类型查找未删除的用户分组 -->
+    <select id="selectByTypeAndIsDeletedFalse" resultMap="BaseResultMap">
+        SELECT id, name, description, type, created_at, updated_at, is_deleted
+        FROM user_groups
+        WHERE type = #{type} AND is_deleted = 0
+    </select>
+
+</mapper>

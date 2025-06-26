@@ -1,6 +1,5 @@
 package com.example.movie_booking_backend.service.impl;
 
-import com.example.movie_booking_backend.common.constants.PermissionConstants;
 import com.example.movie_booking_backend.common.exception.BusinessException;
 import com.example.movie_booking_backend.common.utils.JwtUtils;
 import com.example.movie_booking_backend.mapper.RolesMapper;
@@ -15,7 +14,6 @@ import com.example.movie_booking_backend.service.IAuthService;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-// 移除PasswordEncoder导入
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -78,7 +76,7 @@ public class AuthServiceImpl implements IAuthService {
 
         UserVO userVO = new UserVO();
         BeanUtils.copyProperties(user, userVO);
-        userVO.setRoleName(role.getDisplayName());
+        userVO.setRoleName(role.getName());
         response.setUserInfo(userVO);
 
         return response;
@@ -122,7 +120,7 @@ public class AuthServiceImpl implements IAuthService {
 
         // 获取普通用户角色ID
         QueryWrapper<Roles> roleQuery = new QueryWrapper<>();
-        roleQuery.eq("name", PermissionConstants.ROLE_USER);
+        roleQuery.eq("name", "USER");
         Roles userRole = rolesMapper.selectOne(roleQuery);
         if (userRole == null) {
             throw new BusinessException("系统错误：用户角色不存在");
@@ -146,6 +144,7 @@ public class AuthServiceImpl implements IAuthService {
 
     @Override
     public void logout(String token) {
+        System.out.println("退出成功");
         // 简单实现，直接返回，不做处理
     }
 }
