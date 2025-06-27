@@ -9,12 +9,9 @@
         <result column="hall_id" property="hallId" />
         <result column="session_time" property="sessionTime" />
         <result column="end_time" property="endTime" />
-        <result column="status" property="status" />
-        <result column="price_adjustment" property="priceAdjustment" />
         <result column="created_at" property="createdAt" />
         <result column="updated_at" property="updatedAt" />
         <result column="is_deleted" property="deleted" />
     </resultMap>
-
 
 </mapper>

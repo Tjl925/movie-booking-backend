@@ -16,7 +16,7 @@ import com.example.movie_booking_backend.model.domain.Halls;
  *
  *
  * @author tjl
- * @since 2025-06-23
+ * @since 2025-06-28
  * @version v1.0
  */
 @RestController
@@ -30,9 +30,9 @@ public class HallsController {
 
 
     /**
-     * 描述：根据Id 查询
-     *
-     */
+    * 描述：根据Id 查询
+    *
+    */
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     @ResponseBody
     public JsonResponse<Halls> getById(@PathVariable("id") Long id)throws Exception {

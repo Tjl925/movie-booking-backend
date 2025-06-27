@@ -17,6 +17,8 @@ DROP TABLE IF EXISTS permissions;
 DROP TABLE IF EXISTS roles;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS operation_logs;
+DROP TABLE IF EXISTS user_groups;
+DROP TABLE IF EXISTS user_group_relations;
 
 -- ==================== 用户管理模块 ====================
 
@@ -99,6 +101,41 @@ CREATE TABLE users
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci COMMENT ='用户表';
 
+-- 创建用户组表
+CREATE TABLE user_groups
+(
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '用户组ID',
+    name        VARCHAR(50)  NOT NULL UNIQUE COMMENT '用户组名称',
+    description VARCHAR(255) COMMENT '用户组描述',
+    type       ENUM ('SYSTEM', 'CUSTOM') DEFAULT 'CUSTOM' COMMENT '用户组类型',
+    created_at  TIMESTAMP  DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at  TIMESTAMP  DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    is_deleted  TINYINT(1) DEFAULT 0 COMMENT '是否删除',
+    INDEX idx_name (name),
+    INDEX idx_is_deleted (is_deleted)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci COMMENT ='用户组表';
+
+-- 创建用户组关系表
+CREATE TABLE user_group_relations
+(
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '关系ID',
+    user_id     BIGINT NOT NULL COMMENT '用户ID',
+    group_id    BIGINT NOT NULL COMMENT '用户组ID',
+    created_at  TIMESTAMP  DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at  TIMESTAMP  DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    is_deleted  TINYINT(1) DEFAULT 0 COMMENT '是否删除',
+    UNIQUE KEY uk_user_group (user_id, group_id),
+    INDEX idx_user_id (user_id),
+    INDEX idx_group_id (group_id),
+    INDEX idx_is_deleted (is_deleted),
+    CONSTRAINT fk_user_group_user FOREIGN KEY (user_id) REFERENCES users (id),
+    CONSTRAINT fk_user_group_group FOREIGN KEY (group_id) REFERENCES user_groups (id)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci COMMENT ='用户组关系表';
+
 -- ==================== 电影管理模块 ====================
 
 -- 创建电影表
@@ -141,19 +178,17 @@ CREATE TABLE movies
 -- 创建影厅表
 CREATE TABLE halls
 (
-    id          BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '影厅ID',
-    hall_name   VARCHAR(100) NOT NULL COMMENT '影厅名称',
-    hall_number VARCHAR(20)  NOT NULL UNIQUE COMMENT '影厅编号',
-    description TEXT COMMENT '影厅描述',
-    total_seats INT          NOT NULL COMMENT '总座位数',
-    total_rows  INT          NOT NULL COMMENT '总行数',
-    total_columns INT          NOT NULL COMMENT '总列数',
-    hall_type   ENUM ('REGULAR', 'VIP', 'IMAX', 'DOLBY')   DEFAULT 'REGULAR' COMMENT '影厅类型',
-    status      ENUM ('ACTIVE', 'MAINTENANCE', 'INACTIVE') DEFAULT 'ACTIVE' COMMENT '状态',
-    created_at  TIMESTAMP                                  DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    updated_at  TIMESTAMP                                  DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    is_deleted  TINYINT(1)                                 DEFAULT 0 COMMENT '是否删除',
-    INDEX idx_hall_number (hall_number),
+    id               BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '影厅ID',
+    hall_name        VARCHAR(100) NOT NULL COMMENT '影厅名称',
+    total_seats      INT          NOT NULL COMMENT '总座位数',
+    total_rows       INT          NOT NULL COMMENT '总行数',
+    total_columns    INT          NOT NULL COMMENT '总列数',
+    hall_type        ENUM ('REGULAR', 'VIP', 'IMAX', 'DOLBY')   DEFAULT 'REGULAR' COMMENT '影厅类型',
+    status           ENUM ('ACTIVE', 'MAINTENANCE') DEFAULT 'ACTIVE' COMMENT '状态',
+    price_multiplier DECIMAL(3, 2)                                             DEFAULT 1.00 COMMENT '价格倍数，根据影厅类型计算',
+    created_at       TIMESTAMP                                  DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at       TIMESTAMP                                  DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    is_deleted       TINYINT(1)                                 DEFAULT 0 COMMENT '是否删除',
     INDEX idx_hall_type (hall_type),
     INDEX idx_status (status),
     INDEX idx_is_deleted (is_deleted)
@@ -171,7 +206,7 @@ CREATE TABLE seats
     seat_column      INT         NOT NULL COMMENT '列号',
     seat_type        ENUM ('REGULAR', 'VIP')                                   DEFAULT 'REGULAR' COMMENT '座位类型',
     status           ENUM ('AVAILABLE', 'RESERVED', 'OCCUPIED', 'MAINTENANCE') DEFAULT 'AVAILABLE' COMMENT '状态',
-    price_multiplier DECIMAL(3, 2)                                             DEFAULT 1.00 COMMENT '价格倍数，根据所在影厅类型和座位类型计算',
+    price_multiplier DECIMAL(3, 2)                                             DEFAULT 1.00 COMMENT '价格倍数，根据座位类型计算',
     created_at       TIMESTAMP                                                 DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at       TIMESTAMP                                                 DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     is_deleted       TINYINT(1)                                                DEFAULT 0 COMMENT '是否删除',
@@ -195,15 +230,12 @@ CREATE TABLE movie_sessions
     hall_id          BIGINT   NOT NULL COMMENT '影厅ID',
     session_time     DATETIME NOT NULL COMMENT '开始时间',
     end_time         DATETIME NOT NULL COMMENT '结束时间',
-    status           ENUM ('AVAILABLE', 'FULL', 'CANCELLED', 'COMPLETED') DEFAULT 'AVAILABLE' COMMENT '状态',
-    price_adjustment DECIMAL(3, 2)                                        DEFAULT 1.00 COMMENT '价格调整倍数',
     created_at       TIMESTAMP                                            DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at       TIMESTAMP                                            DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     is_deleted       TINYINT(1)                                           DEFAULT 0 COMMENT '是否删除',
     INDEX idx_movie_id (movie_id),
     INDEX idx_hall_id (hall_id),
     INDEX idx_session_time (session_time),
-    INDEX idx_status (status),
     INDEX idx_movie_time (movie_id, session_time),
     INDEX idx_is_deleted (is_deleted),
     CONSTRAINT fk_session_movie FOREIGN KEY (movie_id) REFERENCES movies (id),
@@ -258,7 +290,7 @@ CREATE TABLE order_items
     INDEX idx_seat_number (seat_number),
     UNIQUE KEY uk_order_seat (order_id, seat_number),
     INDEX idx_is_deleted (is_deleted),
-    CONSTRAINT fk_orderitem_order FOREIGN KEY (order_id) REFERENCES orders (id),
+    CONSTRAINT fk_orderitem_order FOREIGN KEY (order_id) REFERENCES orders (id)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci COMMENT ='订单项表';
@@ -398,7 +430,6 @@ SELECT o.id,
        m.title      as movie_title,
        m.poster_url as movie_poster,
        h.hall_name,
-       h.hall_number,
        o.seat_numbers,
        o.ticket_count,
        o.total_amount,
@@ -424,7 +455,6 @@ SELECT ms.id      as session_id,
        ms.hall_id,
        ms.session_time,
        ms.end_time,
-       ms.status  as session_status,
        s.id       as seat_id,
        s.seat_number,
        s.seat_row,
@@ -556,22 +586,37 @@ VALUES ('testuser', '123456', 'test@movie.com', '13800138002', 3,
        ('staff', '123456', 'staff@movie.com', '13800138003', 3,
         'ACTIVE', 0);
 
+-- 插入用户组数据
+INSERT INTO user_groups (name, description, type)
+VALUES ('新注册用户', '最近30天内注册的新用户', 'SYSTEM'),
+       ('高频订单用户', '过去60天内有订单的用户', 'SYSTEM'),
+       ('活跃用户', '过去30天登录10次以上的用户', 'SYSTEM'),
+       ('休眠用户', '超过180天未登录的用户', 'SYSTEM'),
+       ('营销活动组', '参与特定营销活动的用户', 'CUSTOM'),
+       ('测试用户组', '用于功能测试的内部用户', 'CUSTOM');
+
 -- 插入影厅数据
-INSERT INTO halls (hall_name, hall_number, description, total_seats, total_rows, total_columns, hall_type, status)
-VALUES ('1号厅', 'H001', '标准影厅，适合观看各类电影', 120, 12, 10, 'REGULAR', 'ACTIVE'),
-       ('2号厅', 'H002', 'VIP影厅，提供更舒适的观影体验', 80, 8, 10, 'VIP', 'ACTIVE'),
-       ('IMAX厅', 'H003', 'IMAX巨幕厅，震撼视听体验', 200, 10, 20, 'IMAX', 'ACTIVE'),
-       ('杜比厅', 'H004', '杜比全景声厅，极致音效体验', 150, 10, 15, 'DOLBY', 'ACTIVE');
+INSERT INTO halls (hall_name, total_seats, total_rows, total_columns, hall_type, status, price_multiplier)
+VALUES ('1号厅', 120, 12, 10, 'REGULAR', 'ACTIVE', 1.0),
+       ('2号厅', 80, 8, 10, 'VIP', 'ACTIVE', 1.5),
+       ('IMAX厅', 200, 10, 20, 'IMAX', 'ACTIVE', 2.0),
+       ('杜比厅', 150, 10, 15, 'DOLBY', 'ACTIVE', 1.8);
 
 -- 为每个影厅生成座位数据
 -- 1号厅：12排10列
 INSERT INTO seats (hall_id, seat_number, seat_row, seat_column, seat_type, price_multiplier)
 SELECT 1,
        CONCAT(LPAD(row_num, 2, '0'), LPAD(col_num, 2, '0')),
-       LPAD(row_num, 2, '0'),
-       LPAD(col_num, 2, '0'),
-       'REGULAR',
-       1.00
+       row_num,
+       col_num,
+       CASE
+           WHEN row_num BETWEEN 5 AND 8 AND col_num BETWEEN 3 AND 8 THEN 'VIP'
+           ELSE 'REGULAR'
+       END,
+       CASE
+           WHEN row_num BETWEEN 5 AND 8 AND col_num BETWEEN 3 AND 8 THEN 1.5
+           ELSE 1.0
+       END
 FROM (SELECT a.N as row_num, b.N as col_num
       FROM (SELECT 1 as N
             UNION
@@ -620,10 +665,16 @@ FROM (SELECT a.N as row_num, b.N as col_num
 INSERT INTO seats (hall_id, seat_number, seat_row, seat_column, seat_type, price_multiplier)
 SELECT 2,
        CONCAT(LPAD(row_num, 2, '0'), LPAD(col_num, 2, '0')),
-       LPAD(row_num, 2, '0'),
-       LPAD(col_num, 2, '0'),
-       'VIP',
-       1.50
+       row_num,
+       col_num,
+       CASE
+           WHEN row_num BETWEEN 3 AND 6 AND col_num BETWEEN 3 AND 8 THEN 'VIP'
+           ELSE 'REGULAR'
+       END,
+       CASE
+           WHEN row_num BETWEEN 3 AND 6 AND col_num BETWEEN 3 AND 8 THEN 1.5
+           ELSE 1.0
+       END
 FROM (SELECT a.N as row_num, b.N as col_num
       FROM (SELECT 1 as N
             UNION
@@ -664,10 +715,16 @@ FROM (SELECT a.N as row_num, b.N as col_num
 INSERT INTO seats (hall_id, seat_number, seat_row, seat_column, seat_type, price_multiplier)
 SELECT 3,
        CONCAT(LPAD(row_num, 2, '0'), LPAD(col_num, 2, '0')),
-       LPAD(row_num, 2, '0'),
-       LPAD(col_num, 2, '0'),
-       'REGULAR',
-       2.00
+       row_num,
+       col_num,
+       CASE
+           WHEN row_num BETWEEN 4 AND 7 AND col_num BETWEEN 6 AND 15 THEN 'VIP'
+           ELSE 'REGULAR'
+       END,
+       CASE
+           WHEN row_num BETWEEN 4 AND 7 AND col_num BETWEEN 6 AND 15 THEN 1.5
+           ELSE 1.0
+       END
 FROM (SELECT a.N as row_num, b.N as col_num
       FROM (SELECT 1 as N
             UNION
@@ -732,10 +789,16 @@ FROM (SELECT a.N as row_num, b.N as col_num
 INSERT INTO seats (hall_id, seat_number, seat_row, seat_column, seat_type, price_multiplier)
 SELECT 4,
        CONCAT(LPAD(row_num, 2, '0'), LPAD(col_num, 2, '0')),
-       LPAD(row_num, 2, '0'),
-       LPAD(col_num, 2, '0'),
-       'REGULAR',
-       1.80
+       row_num,
+       col_num,
+       CASE
+           WHEN row_num BETWEEN 4 AND 7 AND col_num BETWEEN 5 AND 11 THEN 'VIP'
+           ELSE 'REGULAR'
+       END,
+       CASE
+           WHEN row_num BETWEEN 4 AND 7 AND col_num BETWEEN 5 AND 11 THEN 1.5
+           ELSE 1.0
+       END
 FROM (SELECT a.N as row_num, b.N as col_num
       FROM (SELECT 1 as N
             UNION
@@ -816,17 +879,11 @@ VALUES ('复仇者联盟4：终局之战', '漫威电影宇宙的史诗级终章
         'NOW_SHOWING', 7.8, 34000, 1200000, '英语', '美国');
 
 -- 插入场次数据（未来7天的场次）
-INSERT INTO movie_sessions (movie_id, hall_id, session_time, end_time, status, price_adjustment)
+INSERT INTO movie_sessions (movie_id, hall_id, session_time, end_time)
 SELECT m.id,
        h.id,
        DATE_ADD(NOW(), INTERVAL day_offset DAY) + INTERVAL hour_offset HOUR,
-       DATE_ADD(NOW(), INTERVAL day_offset DAY) + INTERVAL hour_offset HOUR + INTERVAL m.duration_minutes MINUTE,
-       'AVAILABLE',
-       CASE
-           WHEN hour_offset IN (18, 19, 20) THEN 1.2 -- 黄金时段
-           WHEN hour_offset IN (14, 15, 16) THEN 1.0 -- 普通时段
-           ELSE 0.8 -- 优惠时段
-           END
+       DATE_ADD(NOW(), INTERVAL day_offset DAY) + INTERVAL hour_offset HOUR + INTERVAL m.duration_minutes MINUTE
 FROM movies m
          CROSS JOIN halls h
          CROSS JOIN (SELECT 0 as day_offset
@@ -888,8 +945,8 @@ CREATE PROCEDURE CalculateSeatPrice(
 )
 BEGIN
     DECLARE base_price DECIMAL(10, 2);
-    DECLARE price_multiplier DECIMAL(3, 2);
-    DECLARE price_adjustment DECIMAL(3, 2);
+    DECLARE hall_price_multiplier DECIMAL(3, 2);
+    DECLARE seat_price_multiplier DECIMAL(3, 2);
 
     -- 获取电影基础价格
     SELECT m.base_price
@@ -899,23 +956,24 @@ BEGIN
     WHERE ms.id = p_session_id
       AND ms.is_deleted = 0;
 
+    -- 获取影厅价格倍数
+    SELECT h.price_multiplier
+    INTO hall_price_multiplier
+    FROM movie_sessions ms
+             JOIN halls h ON ms.hall_id = h.id
+    WHERE ms.id = p_session_id
+      AND ms.is_deleted = 0;
+
     -- 获取座位价格倍数
     SELECT s.price_multiplier
-    INTO price_multiplier
+    INTO seat_price_multiplier
     FROM movie_sessions ms
              JOIN seats s ON s.hall_id = ms.hall_id
     WHERE ms.id = p_session_id
       AND s.seat_number = p_seat_number
       AND s.is_deleted = 0;
 
-    -- 获取场次价格调整
-    SELECT ms.price_adjustment
-    INTO price_adjustment
-    FROM movie_sessions ms
-    WHERE ms.id = p_session_id
-      AND ms.is_deleted = 0;
-
-    SET p_price = base_price * price_multiplier * price_adjustment;
+    SET p_price = base_price * hall_price_multiplier * seat_price_multiplier;
 END //
 DELIMITER ;
 
@@ -962,8 +1020,8 @@ DELIMITER ;
 -- 创建复合索引以提高查询性能
 CREATE INDEX idx_orders_user_status ON orders (user_id, status);
 CREATE INDEX idx_orders_session_status ON orders (session_id, status);
-CREATE INDEX idx_movie_sessions_movie_status ON movie_sessions (movie_id, status);
-CREATE INDEX idx_movie_sessions_time_status ON movie_sessions (session_time, status);
+CREATE INDEX idx_movie_sessions_movie_status ON movie_sessions (movie_id);
+CREATE INDEX idx_movie_sessions_time ON movie_sessions (session_time);
 CREATE INDEX idx_payments_order_status ON payments (order_id, payment_status);
 CREATE INDEX idx_users_role_status ON users (role_id, status);
 

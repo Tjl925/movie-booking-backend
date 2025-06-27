@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
  * </p>
  *
  * @author tjl
- * @since 2025-06-23
+ * @since 2025-06-28
  */
 @Service
 public class SeatsServiceImpl extends ServiceImpl<SeatsMapper, Seats> implements ISeatsService {

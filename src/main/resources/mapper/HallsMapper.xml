@@ -6,13 +6,12 @@
     <resultMap id="BaseResultMap" type="com.example.movie_booking_backend.model.domain.Halls">
         <id column="id" property="id" />
         <result column="hall_name" property="hallName" />
-        <result column="hall_number" property="hallNumber" />
-        <result column="description" property="description" />
         <result column="total_seats" property="totalSeats" />
         <result column="total_rows" property="totalRows" />
         <result column="total_columns" property="totalColumns" />
         <result column="hall_type" property="hallType" />
         <result column="status" property="status" />
+        <result column="price_multiplier" property="priceMultiplier" />
         <result column="created_at" property="createdAt" />
         <result column="updated_at" property="updatedAt" />
         <result column="is_deleted" property="deleted" />

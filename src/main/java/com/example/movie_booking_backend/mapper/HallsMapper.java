@@ -9,7 +9,7 @@ import com.example.movie_booking_backend.model.domain.Halls;
  * </p>
  *
  * @author tjl
- * @since 2025-06-23
+ * @since 2025-06-28
  */
 public interface HallsMapper extends BaseMapper<Halls> {
 

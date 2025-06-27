@@ -22,7 +22,7 @@ public class MovieDTO {
 
     @NotNull(message = "时长（分钟）不能为空")
     @ApiModelProperty(value = "时长（分钟）", required = true)
-    private Integer durationInMinutes;
+    private Integer durationMinutes;
 
     @ApiModelProperty(value = "语言")
     private String language;
@@ -31,6 +31,11 @@ public class MovieDTO {
     @DateTimeFormat(pattern = "yyyy-MM-dd")
     @ApiModelProperty(value = "上映日期", required = true)
     private LocalDate releaseDate;
+
+    @NotNull(message = "下映日期不能为空")
+    @DateTimeFormat(pattern = "yyyy-MM-dd")
+    @ApiModelProperty(value = "下映日期", required = true)
+    private LocalDate endDate;
 
     @ApiModelProperty(value = "国家/地区")
     private String country;
@@ -42,8 +47,11 @@ public class MovieDTO {
     private String director;
 
     @ApiModelProperty(value = "主演")
-    private String cast;
+    private String actors;
 
     @ApiModelProperty(value = "海报图片URL")
     private String posterUrl;
+
+    @ApiModelProperty(value = "预告片URL")
+    private String trailerUrl;
 }

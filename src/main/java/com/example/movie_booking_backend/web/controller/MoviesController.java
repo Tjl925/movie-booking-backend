@@ -13,6 +13,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  *
  *  前端控制器
@@ -38,7 +41,7 @@ public class MoviesController {
             @ApiParam("页码") @RequestParam(defaultValue = "1") Integer current,
             @ApiParam("每页大小") @RequestParam(defaultValue = "10") Integer size,
             @ApiParam("电影标题") @RequestParam(required = false) String title,
-            @ApiParam("状态 (EDITING, SHOWING, OFFLINE)") @RequestParam(required = false) String status) {
+            @ApiParam("状态 (UPCOMING, NOW_SHOWING, ENDED)") @RequestParam(required = false) String status) {
         Page<Movies> page = new Page<>(current, size);
         return JsonResponse.success(moviesService.listMovies(page, title, status));
     }
@@ -60,8 +63,12 @@ public class MoviesController {
     @ApiOperation("【后台】删除电影")
     @DeleteMapping("/{id}")
     public JsonResponse<String> deleteMovie(@PathVariable Long id) {
-        moviesService.removeById(id); // 逻辑删除，依赖于MyBatis Plus的默认配置
-        return JsonResponse.successMessage("电影删除成功");
+        boolean result = moviesService.deleteMovie(id); // 使用自定义的逻辑删除方法
+        if (result) {
+            return JsonResponse.successMessage("电影删除成功");
+        } else {
+            return JsonResponse.failure("电影删除失败");
+        }
     }
 
     @ApiOperation("【后台】更新电影状态")
@@ -112,6 +119,74 @@ public class MoviesController {
             return JsonResponse.failure("电影不存在或未上映");
         }
         return JsonResponse.success(movie);
+    }
+    
+    // ================= 电影类型相关接口 =================
+    
+    @ApiOperation("获取所有电影类型及其电影数量")
+    @GetMapping("/genres")
+    public JsonResponse<List<Map<String, Object>>> getAllGenres() {
+        return JsonResponse.success(moviesService.getAllGenresWithCount());
+    }
+    
+    @ApiOperation("根据类型分页获取电影列表")
+    @GetMapping("/genres/{genre}")
+    public JsonResponse<Page<Movies>> getMoviesByGenre(
+            @PathVariable String genre,
+            @ApiParam("页码") @RequestParam(defaultValue = "1") Integer current,
+            @ApiParam("每页大小") @RequestParam(defaultValue = "10") Integer size) {
+        Page<Movies> page = new Page<>(current, size);
+        return JsonResponse.success(moviesService.listMoviesByGenre(page, genre));
+    }
+    
+    @ApiOperation("根据类型批量删除电影")
+    @DeleteMapping("/genres/{genre}")
+    public JsonResponse<String> deleteMoviesByGenre(@PathVariable String genre) {
+        int count = moviesService.deleteMoviesByGenre(genre);
+        return JsonResponse.success(null, "成功删除 " + count + " 部电影");
+    }
+    
+    @ApiOperation("更新电影类型")
+    @PutMapping("/genres/{oldGenre}")
+    public JsonResponse<String> updateMoviesByGenre(
+            @PathVariable String oldGenre,
+            @RequestParam String newGenre) {
+        int count = moviesService.updateMoviesByGenre(oldGenre, newGenre);
+        return JsonResponse.success(null, "成功更新 " + count + " 部电影的类型");
+    }
+    
+    // ================= 电影区域相关接口 =================
+    
+    @ApiOperation("获取所有电影区域及其电影数量")
+    @GetMapping("/regions")
+    public JsonResponse<List<Map<String, Object>>> getAllRegions() {
+        return JsonResponse.success(moviesService.getAllRegionsWithCount());
+    }
+    
+    @ApiOperation("根据区域分页获取电影列表")
+    @GetMapping("/regions/{region}")
+    public JsonResponse<Page<Movies>> getMoviesByRegion(
+            @PathVariable String region,
+            @ApiParam("页码") @RequestParam(defaultValue = "1") Integer current,
+            @ApiParam("每页大小") @RequestParam(defaultValue = "10") Integer size) {
+        Page<Movies> page = new Page<>(current, size);
+        return JsonResponse.success(moviesService.listMoviesByRegion(page, region));
+    }
+    
+    @ApiOperation("根据区域批量删除电影")
+    @DeleteMapping("/regions/{region}")
+    public JsonResponse<String> deleteMoviesByRegion(@PathVariable String region) {
+        int count = moviesService.deleteMoviesByRegion(region);
+        return JsonResponse.success(null, "成功删除 " + count + " 部电影");
+    }
+    
+    @ApiOperation("更新电影区域")
+    @PutMapping("/regions/{oldRegion}")
+    public JsonResponse<String> updateMoviesByRegion(
+            @PathVariable String oldRegion,
+            @RequestParam String newRegion) {
+        int count = moviesService.updateMoviesByRegion(oldRegion, newRegion);
+        return JsonResponse.success(null, "成功更新 " + count + " 部电影的区域");
     }
 }
 

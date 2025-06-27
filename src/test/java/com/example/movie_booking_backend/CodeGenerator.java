@@ -120,7 +120,7 @@ public class CodeGenerator {
                             .customFile(new HashMap<>()); // 自定义配置模板文件，用于指定自定义的模板文件路径，可以格式化文件名
                 })
                 .strategyConfig((scanner, builder) ->
-                        builder.addInclude("user_group_relations") // 设置需要生成的表名
+                        builder.addInclude("movie_sessions") // 设置需要生成的表名
 //                                .addTablePrefix("t_") // 设置过滤表前缀
                                 .entityBuilder().enableFileOverride()// entity存在及覆盖
                                 .enableLombok() // 启用 Lombok

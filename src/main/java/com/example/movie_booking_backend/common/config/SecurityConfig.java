@@ -68,6 +68,7 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
                         // 需要特定角色的接口
                         .requestMatchers("/api/user/**").hasAnyRole("ADMIN", "SUPERADMIN")
+                        .requestMatchers("/api/movies/**").hasAnyRole("ADMIN", "SUPERADMIN")
                         // 其他接口需要认证
                         .anyRequest().authenticated()
                 );

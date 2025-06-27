@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -36,6 +37,9 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders> impleme
 
     @Autowired
     private SeatsMapper seatsMapper;
+
+    @Autowired
+    private HallsMapper hallsMapper;
 
     @Autowired
     private MoviesMapper moviesMapper;
@@ -65,9 +69,18 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders> impleme
         // 获取电影基础票价和场次价格调整
         Movies movie = moviesMapper.selectById(session.getMovieId());
         BigDecimal basePrice = movie.getBasePrice();
-        BigDecimal priceAdjustment = session.getPriceAdjustment() == null ? BigDecimal.ONE : session.getPriceAdjustment();
-        BigDecimal price = basePrice.multiply(priceAdjustment);
-        BigDecimal totalAmount = price.multiply(BigDecimal.valueOf(orderCreationDTO.getSeatIds().size()));
+
+        Halls hall = hallsMapper.selectById(session.getHallId());
+        BigDecimal price = basePrice.multiply(hall.getPriceMultiplier());
+        BigDecimal totalAmount = BigDecimal.valueOf(0.0);
+        List<Long> seatIds = orderCreationDTO.getSeatIds();
+        for( Long seatId : seatIds) {
+            Seats seat = seatsMapper.selectById(seatId);
+            if (seat == null || !Objects.equals(seat.getHallId(), hall.getId()) || !seat.getStatus().equals("AVAILABLE")) {
+                throw new BusinessException("座位 " + seatId + " 不可用或不存在");
+            }
+            totalAmount = totalAmount.add(price.multiply(seat.getPriceMultiplier()));
+        }
 
         // 2. 尝试锁定座位 (核心步骤，保证原子性)
         UpdateWrapper<Seats> lockWrapper = new UpdateWrapper<>();

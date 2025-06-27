@@ -9,7 +9,7 @@ import com.example.movie_booking_backend.model.domain.MovieSessions;
  * </p>
  *
  * @author tjl
- * @since 2025-06-23
+ * @since 2025-06-28
  */
 public interface MovieSessionsMapper extends BaseMapper<MovieSessions> {
 
