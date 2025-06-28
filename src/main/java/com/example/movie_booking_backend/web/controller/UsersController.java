@@ -3,9 +3,7 @@ package com.example.movie_booking_backend.web.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.movie_booking_backend.common.JsonResponse;
 import com.example.movie_booking_backend.model.domain.Users;
-import com.example.movie_booking_backend.model.dto.ResetPasswordDTO;
-import com.example.movie_booking_backend.model.dto.UserCreationDTO;
-import com.example.movie_booking_backend.model.dto.UserUpdateDTO;
+import com.example.movie_booking_backend.model.dto.*;
 import com.example.movie_booking_backend.model.vo.UserVO;
 import com.example.movie_booking_backend.service.IUsersService;
 import io.swagger.annotations.Api;
@@ -17,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 前端控制器
@@ -78,6 +77,19 @@ public class UsersController {
         return JsonResponse.success(userVO, "用户更新成功");
     }
 
+    @ApiOperation("更新用户个人信息（简化版）")
+    @PostMapping("/profile/{id}")
+    public JsonResponse<UserVO> updateUserProfile(
+            @PathVariable Long id,
+            @RequestBody UserProfileUpdateDTO updateDTO
+    ) {
+        Users user = usersService.updateUserProfile(id, updateDTO);
+        UserVO vo = new UserVO();
+        BeanUtils.copyProperties(user, vo);
+        return JsonResponse.success(vo, "个人信息更新成功");
+    }
+
+
     @ApiOperation("删除用户")
     @DeleteMapping("/{id}")
     public JsonResponse<String> deleteUser(@PathVariable Long id) {
@@ -138,6 +150,30 @@ public class UsersController {
     public JsonResponse<String> resetPassword(@PathVariable Long id, @Valid @RequestBody ResetPasswordDTO resetPasswordDTO) {
         usersService.resetPassword(id, resetPasswordDTO.getNewPassword());
         return JsonResponse.successMessage("密码重置成功");
+    }
+    @ApiOperation("上传用户头像")
+    @PostMapping("/{id}/avatar")
+    public JsonResponse<String> uploadAvatar(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file) {
+        try {
+            // 调用userService处理头像上传
+            String avatarUrl = usersService.uploadAvatar(id, file);
+            return JsonResponse.success(avatarUrl, "头像上传成功");
+        } catch (Exception e) {
+            return JsonResponse.failure("头像上传失败: " + e.getMessage());
+        }
+    }
+
+    @ApiOperation("修改用户密码")
+    @PostMapping("/change-password")
+    public JsonResponse<String> changePassword(@Valid @RequestBody ChangePasswordDTO changePasswordDTO) {
+        try {
+            usersService.changePassword(changePasswordDTO);
+            return JsonResponse.successMessage("密码修改成功");
+        } catch (Exception e) {
+            return JsonResponse.failure("密码修改失败: " + e.getMessage());
+        }
     }
 }
 

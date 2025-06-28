@@ -11,7 +11,6 @@ import com.example.movie_booking_backend.model.vo.OrderVO;
 import com.example.movie_booking_backend.service.IMovieSessionsService;
 import com.example.movie_booking_backend.service.IOrdersService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.example.movie_booking_backend.service.ISeatsService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

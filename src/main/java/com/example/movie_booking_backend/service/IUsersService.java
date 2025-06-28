@@ -3,9 +3,13 @@ package com.example.movie_booking_backend.service;
 import com.example.movie_booking_backend.model.domain.Users;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.movie_booking_backend.model.dto.ChangePasswordDTO;
 import com.example.movie_booking_backend.model.dto.UserCreationDTO;
+import com.example.movie_booking_backend.model.dto.UserProfileUpdateDTO;
 import com.example.movie_booking_backend.model.dto.UserUpdateDTO;
 import com.example.movie_booking_backend.model.vo.UserVO;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * <p>
@@ -25,4 +29,10 @@ public interface IUsersService extends IService<Users> {
     Users updateUser(Long id, UserUpdateDTO userUpdateDTO);
 
     void resetPassword(Long id, String newPassword);
+
+    @Transactional
+    Users updateUserProfile(Long id, UserProfileUpdateDTO updateDTO);
+
+    String uploadAvatar(Long id, MultipartFile file);
+    void changePassword(ChangePasswordDTO changePasswordDTO);
 }

@@ -1,16 +1,20 @@
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/movie_booking_system?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
-    username: root
-    password: '041024'
+    url: jdbc:mysql://192.168.200.197:3306/movie_booking_system?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+    username: YY
+    password: '123456'
   mvc:
     format:
       date: yyyy-MM-dd
+    static-path-pattern: /uploads/** # 修改为匹配 /uploads 路径
   servlet:
     multipart:
       max-file-size: 100MB
       max-request-size: 100MB
+  web:
+    resources:
+      static-locations: classpath:/META-INF/resources/, classpath:/resources/, classpath:/static/, classpath:/public/, file:${file-upload-path}/ # 确保路径末尾有斜杠
 server:
   servlet:
     encoding:
@@ -30,7 +34,12 @@ jwt:
 
 # 文件上传配置
 file-upload-path: ./uploads
-
+auto-create-dir: true
+avatar:
+  upload-dir: ${file-upload-path}/avatar
+  allowed-types: [image/jpeg, image/png]  # 行内列表
+  max-size: 2MB                      # 头像大小限制
+  allowed-extensions: [.jpg, .jpeg, .png]
 logging:
   level:
     com.example.movie_booking_backend: debug

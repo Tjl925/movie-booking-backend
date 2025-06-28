@@ -108,27 +108,28 @@ public class MoviesController {
             @ApiParam("页码") @RequestParam(defaultValue = "1") Integer current,
             @ApiParam("每页大小") @RequestParam(defaultValue = "10") Integer size) {
         Page<Movies> page = new Page<>(current, size);
-        return JsonResponse.success(moviesService.listMovies(page, null, "SHOWING"));
+        return JsonResponse.success(moviesService.listMovies(page, null, "NOW_SHOWING"));
     }
 
     @ApiOperation("【前台】根据ID获取电影详情")
     @GetMapping("/public/{id}")
     public JsonResponse<Movies> getMovieById(@PathVariable Long id) {
         Movies movie = moviesService.getById(id);
-        if (movie == null || movie.getDeleted() || !"SHOWING".equals(movie.getStatus())) {
+        System.out.println(movie);
+        if (movie == null || movie.getDeleted() || !"NOW_SHOWING".equals(movie.getStatus())) {
             return JsonResponse.failure("电影不存在或未上映");
         }
         return JsonResponse.success(movie);
     }
-    
+
     // ================= 电影类型相关接口 =================
-    
+
     @ApiOperation("获取所有电影类型及其电影数量")
     @GetMapping("/genres")
     public JsonResponse<List<Map<String, Object>>> getAllGenres() {
         return JsonResponse.success(moviesService.getAllGenresWithCount());
     }
-    
+
     @ApiOperation("根据类型分页获取电影列表")
     @GetMapping("/genres/{genre}")
     public JsonResponse<Page<Movies>> getMoviesByGenre(
@@ -138,14 +139,14 @@ public class MoviesController {
         Page<Movies> page = new Page<>(current, size);
         return JsonResponse.success(moviesService.listMoviesByGenre(page, genre));
     }
-    
+
     @ApiOperation("根据类型批量删除电影")
     @DeleteMapping("/genres/{genre}")
     public JsonResponse<String> deleteMoviesByGenre(@PathVariable String genre) {
         int count = moviesService.deleteMoviesByGenre(genre);
         return JsonResponse.success(null, "成功删除 " + count + " 部电影");
     }
-    
+
     @ApiOperation("更新电影类型")
     @PutMapping("/genres/{oldGenre}")
     public JsonResponse<String> updateMoviesByGenre(
@@ -154,15 +155,15 @@ public class MoviesController {
         int count = moviesService.updateMoviesByGenre(oldGenre, newGenre);
         return JsonResponse.success(null, "成功更新 " + count + " 部电影的类型");
     }
-    
+
     // ================= 电影区域相关接口 =================
-    
+
     @ApiOperation("获取所有电影区域及其电影数量")
     @GetMapping("/regions")
     public JsonResponse<List<Map<String, Object>>> getAllRegions() {
         return JsonResponse.success(moviesService.getAllRegionsWithCount());
     }
-    
+
     @ApiOperation("根据区域分页获取电影列表")
     @GetMapping("/regions/{region}")
     public JsonResponse<Page<Movies>> getMoviesByRegion(
@@ -172,14 +173,14 @@ public class MoviesController {
         Page<Movies> page = new Page<>(current, size);
         return JsonResponse.success(moviesService.listMoviesByRegion(page, region));
     }
-    
+
     @ApiOperation("根据区域批量删除电影")
     @DeleteMapping("/regions/{region}")
     public JsonResponse<String> deleteMoviesByRegion(@PathVariable String region) {
         int count = moviesService.deleteMoviesByRegion(region);
         return JsonResponse.success(null, "成功删除 " + count + " 部电影");
     }
-    
+
     @ApiOperation("更新电影区域")
     @PutMapping("/regions/{oldRegion}")
     public JsonResponse<String> updateMoviesByRegion(
@@ -187,6 +188,20 @@ public class MoviesController {
             @RequestParam String newRegion) {
         int count = moviesService.updateMoviesByRegion(oldRegion, newRegion);
         return JsonResponse.success(null, "成功更新 " + count + " 部电影的区域");
+    }
+    @GetMapping("public/top10")
+    public JsonResponse<List<Movies>> getTop10Movies(){
+        return JsonResponse.success(moviesService.getTop10Movies());
+    }
+
+    @ApiOperation("【前台】搜索电影")
+    @GetMapping("/public/search")
+    public JsonResponse<Page<Movies>> getSearchList(
+            @ApiParam("页码") @RequestParam(defaultValue = "1") Integer current,
+            @ApiParam("每页大小") @RequestParam(defaultValue = "10") Integer size,
+            @ApiParam("搜索关键词") @RequestParam String keyword) {
+        Page<Movies> page = new Page<>(current, size);
+        return JsonResponse.success(moviesService.searchMovies(page, keyword));
     }
 }
 
