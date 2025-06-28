@@ -22,7 +22,7 @@ public class SessionVO {
     private Halls hall;
 
     @ApiModelProperty(value = "开始时间")
-    private LocalDateTime startTime;
+    private LocalDateTime sessionTime;
 
     @ApiModelProperty(value = "结束时间")
     private LocalDateTime endTime;

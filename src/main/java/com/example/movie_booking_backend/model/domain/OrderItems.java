@@ -41,9 +41,6 @@ public class OrderItems implements Serializable {
     @TableField("order_id")
     private Long orderId;
 
-    @ApiModelProperty(value = "座位号")
-    @TableField("seat_number")
-    private String seatNumber;
 
     @ApiModelProperty(value = "价格")
     @TableField("price")

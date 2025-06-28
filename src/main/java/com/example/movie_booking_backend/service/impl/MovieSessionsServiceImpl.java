@@ -257,7 +257,8 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
                     seatVO.setId(seat.getId());
                     seatVO.setRowNumber(seat.getSeatRow());     // 关键修改点
                     seatVO.setColumnNumber(seat.getSeatColumn()); // 关键修改点
-
+                    seatVO.setSeatType(seat.getSeatType());
+                    seatVO.setPriceMultiplier(seat.getPriceMultiplier());
                     // 状态设置
                     switch (seat.getStatus()) {
                         case "RESERVED":
