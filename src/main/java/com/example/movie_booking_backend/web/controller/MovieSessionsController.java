@@ -2,10 +2,9 @@ package com.example.movie_booking_backend.web.controller;
 
 import com.example.movie_booking_backend.common.JsonResponse;
 import com.example.movie_booking_backend.model.dto.SeatSelectionDTO;
-import com.example.movie_booking_backend.model.dto.SeatStatusUpdateDTO;
 import com.example.movie_booking_backend.model.dto.SessionDTO;
 import com.example.movie_booking_backend.model.vo.SeatVO;
-import com.example.movie_booking_backend.model.vo.SessionInfo;
+import com.example.movie_booking_backend.model.vo.SessionInfoVO;
 import com.example.movie_booking_backend.model.vo.SessionSeatsVO;
 import com.example.movie_booking_backend.model.vo.SessionVO;
 import com.example.movie_booking_backend.service.IMovieSessionsService;
@@ -86,9 +85,9 @@ public class MovieSessionsController {
 
     @ApiOperation("【前台】获取某电影的所有场次完整信息")
     @GetMapping("/public/movie/{movieId}/session-infos")
-    public JsonResponse<List<SessionInfo>> getSessionInfos(
+    public JsonResponse<List<SessionInfoVO>> getSessionInfos(
             @PathVariable Long movieId) {
-        List<SessionInfo> result = movieSessionsService.getSessionInfosByMovieId(movieId);
+        List<SessionInfoVO> result = movieSessionsService.getSessionInfosByMovieId(movieId);
         return JsonResponse.success(result);
     }
 

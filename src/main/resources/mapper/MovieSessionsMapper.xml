@@ -14,7 +14,7 @@
         <result column="is_deleted" property="deleted" />
     </resultMap>
     <!-- 根据电影ID查询可用场次 -->
-    <select id="findSessionInfoByMovieId" resultType="com.example.movie_booking_backend.model.vo.SessionInfo">
+    <select id="findSessionInfoByMovieId" resultType="com.example.movie_booking_backend.model.vo.SessionInfoVO">
         SELECT
             ms.id AS sessionId,
             ms.session_time AS startTime,

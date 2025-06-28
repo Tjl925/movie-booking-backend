@@ -100,21 +100,21 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
         return (String) fileService.uploadFile(file, "videos").get("url");
     }
 
-        @Autowired
-        private MoviesMapper moviesMapper;
+    @Autowired
+    private MoviesMapper moviesMapper;
 
-        @Override
-        public List<Movies> getTop10Movies() {
-            // 方法1：使用MyBatis-Plus查询
-            QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
-            queryWrapper.orderByDesc("rating")  // 按评分降序
-                    .last("LIMIT 10");      // 限制10条
+    @Override
+    public List<Movies> getTop10Movies() {
+        // 方法1：使用MyBatis-Plus查询
+        QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
+        queryWrapper.orderByDesc("rating")  // 按评分降序
+                .last("LIMIT 10");      // 限制10条
 
-            return moviesMapper.selectList(queryWrapper);
+        return moviesMapper.selectList(queryWrapper);
 
-            // 方法2：使用自定义SQL（推荐复杂查询）
-            // return moviesMapper.selectTop10Movies();
-        }
+        // 方法2：使用自定义SQL（推荐复杂查询）
+        // return moviesMapper.selectTop10Movies();
+    }
 
     @Override
     public Page<Movies> searchMovies(Page<Movies> page, String keyword) {

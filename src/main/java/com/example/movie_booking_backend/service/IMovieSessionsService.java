@@ -6,7 +6,7 @@ import com.example.movie_booking_backend.model.dto.SeatSelectionDTO;
 import com.example.movie_booking_backend.model.dto.SeatStatusUpdateDTO;
 import com.example.movie_booking_backend.model.dto.SessionDTO;
 import com.example.movie_booking_backend.model.vo.SeatVO;
-import com.example.movie_booking_backend.model.vo.SessionInfo;
+import com.example.movie_booking_backend.model.vo.SessionInfoVO;
 import com.example.movie_booking_backend.model.vo.SessionSeatsVO;
 import com.example.movie_booking_backend.model.vo.SessionVO;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,7 +36,7 @@ public interface IMovieSessionsService extends IService<MovieSessions> {
 
     List<SeatVO> getSeatStatusForSession(Long sessionId);
 
-    List<SessionInfo> getSessionInfosByMovieId(Long movieId);
+    List<SessionInfoVO> getSessionInfosByMovieId(Long movieId);
 
     @Transactional
     void updateSeatsStatus(List<SeatStatusUpdateDTO> updates);

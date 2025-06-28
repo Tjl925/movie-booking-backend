@@ -11,7 +11,7 @@ import com.example.movie_booking_backend.model.dto.SeatSelectionDTO;
 import com.example.movie_booking_backend.model.dto.SeatStatusUpdateDTO;
 import com.example.movie_booking_backend.model.dto.SessionDTO;
 import com.example.movie_booking_backend.model.vo.SeatVO;
-import com.example.movie_booking_backend.model.vo.SessionInfo;
+import com.example.movie_booking_backend.model.vo.SessionInfoVO;
 import com.example.movie_booking_backend.model.vo.SessionSeatsVO;
 import com.example.movie_booking_backend.model.vo.SessionVO;
 import com.example.movie_booking_backend.service.IHallsService;
@@ -163,21 +163,21 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
                     seatVO.setRowNumber(seat.getSeatRow());
                     seatVO.setColumnNumber(seat.getSeatColumn());
                     String dbStatus = seat.getStatus();
-                        // 根据座位原始状态转换
+                    // 根据座位原始状态转换
                     System.out.println("wocaonima");
                     switch (seat.getStatus()) {
                         case "RESERVED":
                             seatVO.setStatus("RESERVED");
                             break;
                         case "MAINTENANCE":
-                             seatVO.setStatus("MAINTENANCE");
-                             break;
+                            seatVO.setStatus("MAINTENANCE");
+                            break;
                         case "OCCUPIED":
-                             seatVO.setStatus("OCCUPIE");
-                             break;
+                            seatVO.setStatus("OCCUPIE");
+                            break;
                         default:
-                             seatVO.setStatus("AVAILABLE");
-                        }
+                            seatVO.setStatus("AVAILABLE");
+                    }
 
                     System.out.println("座位ID: " + seat.getId() + ", 数据库status: " + dbStatus + ", 类型: " + dbStatus.getClass());
                     return seatVO;
@@ -202,7 +202,7 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
         }
     }
     @Override
-    public List<SessionInfo> getSessionInfosByMovieId(Long movieId) {
+    public List<SessionInfoVO> getSessionInfosByMovieId(Long movieId) {
         return movieSessionsMapper.findSessionInfoByMovieId(movieId);
     }
     private SessionVO mapToSessionVO(MovieSessions session) {

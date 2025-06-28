@@ -2,9 +2,7 @@ package com.example.movie_booking_backend.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.example.movie_booking_backend.model.domain.MovieSessions;
-import com.example.movie_booking_backend.model.vo.SeatVO;
-import com.example.movie_booking_backend.model.vo.SessionInfo;
-import com.example.movie_booking_backend.model.vo.SessionVO;
+import com.example.movie_booking_backend.model.vo.SessionInfoVO;
 
 import java.util.List;
 
@@ -18,5 +16,5 @@ import java.util.List;
  */
 public interface MovieSessionsMapper extends BaseMapper<MovieSessions> {
 
-    List<SessionInfo> findSessionInfoByMovieId(Long movieId);
+    List<SessionInfoVO> findSessionInfoByMovieId(Long movieId);
 }
