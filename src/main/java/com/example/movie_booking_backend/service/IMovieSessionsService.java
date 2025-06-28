@@ -1,6 +1,5 @@
 package com.example.movie_booking_backend.service;
 
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.movie_booking_backend.model.domain.MovieSessions;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.movie_booking_backend.model.dto.SeatSelectionDTO;
