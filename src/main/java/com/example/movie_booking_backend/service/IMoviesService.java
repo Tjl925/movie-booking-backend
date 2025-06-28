@@ -31,7 +31,7 @@ public interface IMoviesService extends IService<Movies> {
     String uploadPoster(MultipartFile file) throws IOException;
 
     String uploadVideo(MultipartFile file) throws IOException;
-    
+
     /**
      * 逻辑删除电影
      *
@@ -39,14 +39,14 @@ public interface IMoviesService extends IService<Movies> {
      * @return 是否删除成功
      */
     boolean deleteMovie(Long movieId);
-    
+
     /**
      * 获取所有电影类型及其对应的电影数量
      *
      * @return 类型列表，包含类型名称和电影数量
      */
     List<Map<String, Object>> getAllGenresWithCount();
-    
+
     /**
      * 根据类型分页获取电影列表
      *
@@ -55,14 +55,14 @@ public interface IMoviesService extends IService<Movies> {
      * @return 分页电影列表
      */
     Page<Movies> listMoviesByGenre(Page<Movies> page, String genre);
-    
+
     /**
      * 获取所有电影区域及其对应的电影数量
      *
      * @return 区域列表，包含区域名称和电影数量
      */
     List<Map<String, Object>> getAllRegionsWithCount();
-    
+
     /**
      * 根据区域分页获取电影列表
      *
@@ -71,7 +71,7 @@ public interface IMoviesService extends IService<Movies> {
      * @return 分页电影列表
      */
     Page<Movies> listMoviesByRegion(Page<Movies> page, String region);
-    
+
     /**
      * 根据类型批量逻辑删除电影
      *
@@ -79,7 +79,7 @@ public interface IMoviesService extends IService<Movies> {
      * @return 删除的电影数量
      */
     int deleteMoviesByGenre(String genre);
-    
+
     /**
      * 根据区域批量逻辑删除电影
      *
@@ -87,7 +87,7 @@ public interface IMoviesService extends IService<Movies> {
      * @return 删除的电影数量
      */
     int deleteMoviesByRegion(String region);
-    
+
     /**
      * 更新电影类型
      *
@@ -96,7 +96,7 @@ public interface IMoviesService extends IService<Movies> {
      * @return 更新的电影数量
      */
     int updateMoviesByGenre(String oldGenre, String newGenre);
-    
+
     /**
      * 更新电影区域
      *
@@ -105,4 +105,8 @@ public interface IMoviesService extends IService<Movies> {
      * @return 更新的电影数量
      */
     int updateMoviesByRegion(String oldRegion, String newRegion);
+
+    List<Movies> getTop10Movies();
+
+    Page<Movies> searchMovies(Page<Movies> page, String keyword);
 }

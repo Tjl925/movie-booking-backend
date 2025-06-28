@@ -14,3 +14,5 @@ import com.example.movie_booking_backend.model.domain.Movies;
 public interface MoviesMapper extends BaseMapper<Movies> {
 
 }
+
+

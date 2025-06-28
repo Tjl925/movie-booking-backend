@@ -99,7 +99,42 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
     public String uploadVideo(MultipartFile file) throws IOException {
         return (String) fileService.uploadFile(file, "videos").get("url");
     }
-    
+
+        @Autowired
+        private MoviesMapper moviesMapper;
+
+        @Override
+        public List<Movies> getTop10Movies() {
+            // 方法1：使用MyBatis-Plus查询
+            QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
+            queryWrapper.orderByDesc("rating")  // 按评分降序
+                    .last("LIMIT 10");      // 限制10条
+
+            return moviesMapper.selectList(queryWrapper);
+
+            // 方法2：使用自定义SQL（推荐复杂查询）
+            // return moviesMapper.selectTop10Movies();
+        }
+
+    @Override
+    public Page<Movies> searchMovies(Page<Movies> page, String keyword) {
+        QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("is_deleted", false);
+
+        // 构建搜索条件
+        queryWrapper.and(wrapper -> wrapper
+                .like("title", keyword)
+                .or().like("director", keyword)
+                .or().like("genre", keyword)
+                .or().like("actors", keyword));
+
+        // 先按相关性排序（标题匹配更相关），再按评分降序排序
+        queryWrapper.orderByDesc("CASE WHEN title LIKE '%" + keyword + "%' THEN 1 ELSE 0 END")
+                .orderByDesc("rating");
+
+        return this.page(page, queryWrapper);
+    }
+
     @Override
     @Transactional
     public boolean deleteMovie(Long movieId) {
@@ -108,7 +143,7 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
         if (movie == null) {
             throw new BusinessException("电影不存在");
         }
-        
+
         // 如果已经被删除，直接返回成功
         if (Objects.equals(movie.getStatus(), "ENDED")) {
             return true;
@@ -117,11 +152,11 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
         // 将状态设置为下线
         movie.setStatus("ENDED");
         movie.setUpdatedAt(LocalDateTime.now());
-        
+
         // 更新数据库
         return this.updateById(movie);
     }
-    
+
     @Override
     public List<Map<String, Object>> getAllGenresWithCount() {
         // 查询所有未删除的电影
@@ -129,10 +164,10 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
         queryWrapper.eq("is_deleted", false);
         queryWrapper.select("genre", "COUNT(*) as count");
         queryWrapper.groupBy("genre");
-        
+
         // 使用Mapper执行自定义SQL查询
         List<Map<String, Object>> result = this.baseMapper.selectMaps(queryWrapper);
-        
+
         // 处理结果，确保返回格式一致
         List<Map<String, Object>> genreList = new ArrayList<>();
         for (Map<String, Object> item : result) {
@@ -141,22 +176,22 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
             genreMap.put("movieCount", item.get("count"));
             genreList.add(genreMap);
         }
-        
+
         return genreList;
     }
-    
+
     @Override
     public Page<Movies> listMoviesByGenre(Page<Movies> page, String genre) {
         QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("is_deleted", false);
-        
+
         if (genre != null && !genre.isEmpty()) {
             queryWrapper.eq("genre", genre);
         }
-        
+
         return this.page(page, queryWrapper);
     }
-    
+
     @Override
     public List<Map<String, Object>> getAllRegionsWithCount() {
         // 查询所有未删除的电影
@@ -164,10 +199,10 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
         queryWrapper.eq("is_deleted", false);
         queryWrapper.select("country", "COUNT(*) as count");
         queryWrapper.groupBy("country");
-        
+
         // 使用Mapper执行自定义SQL查询
         List<Map<String, Object>> result = this.baseMapper.selectMaps(queryWrapper);
-        
+
         // 处理结果，确保返回格式一致
         List<Map<String, Object>> regionList = new ArrayList<>();
         for (Map<String, Object> item : result) {
@@ -176,139 +211,139 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
             regionMap.put("movieCount", item.get("count"));
             regionList.add(regionMap);
         }
-        
+
         return regionList;
     }
-    
+
     @Override
     public Page<Movies> listMoviesByRegion(Page<Movies> page, String region) {
         QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("is_deleted", false);
-        
+
         if (region != null && !region.isEmpty()) {
             queryWrapper.eq("country", region);
         }
-        
+
         return this.page(page, queryWrapper);
     }
-    
+
     @Override
     @Transactional
     public int deleteMoviesByGenre(String genre) {
         if (genre == null || genre.isEmpty()) {
             throw new BusinessException("电影类型不能为空");
         }
-        
+
         // 查询符合条件的电影
         QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("genre", genre).eq("is_deleted", false);
         List<Movies> moviesList = this.list(queryWrapper);
-        
+
         if (moviesList.isEmpty()) {
             return 0;
         }
-        
+
         // 批量更新电影状态为已删除
         for (Movies movie : moviesList) {
             movie.setStatus("ENDED");
             movie.setUpdatedAt(LocalDateTime.now());
         }
-        
+
         // 批量更新
         this.updateBatchById(moviesList);
-        
+
         return moviesList.size();
     }
-    
+
     @Override
     @Transactional
     public int deleteMoviesByRegion(String region) {
         if (region == null || region.isEmpty()) {
             throw new BusinessException("电影区域不能为空");
         }
-        
+
         // 查询符合条件的电影
         QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("country", region).eq("is_deleted", false);
         List<Movies> moviesList = this.list(queryWrapper);
-        
+
         if (moviesList.isEmpty()) {
             return 0;
         }
-        
+
         // 批量更新电影状态为已删除
         for (Movies movie : moviesList) {
             movie.setStatus("ENDED");
             movie.setUpdatedAt(LocalDateTime.now());
         }
-        
+
         // 批量更新
         this.updateBatchById(moviesList);
-        
+
         return moviesList.size();
     }
-    
+
     @Override
     @Transactional
     public int updateMoviesByGenre(String oldGenre, String newGenre) {
         if (oldGenre == null || oldGenre.isEmpty()) {
             throw new BusinessException("原电影类型不能为空");
         }
-        
+
         if (newGenre == null || newGenre.isEmpty()) {
             throw new BusinessException("新电影类型不能为空");
         }
-        
+
         // 查询符合条件的电影
         QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("genre", oldGenre).eq("is_deleted", false);
         List<Movies> moviesList = this.list(queryWrapper);
-        
+
         if (moviesList.isEmpty()) {
             return 0;
         }
-        
+
         // 批量更新电影类型
         for (Movies movie : moviesList) {
             movie.setGenre(newGenre);
             movie.setUpdatedAt(LocalDateTime.now());
         }
-        
+
         // 批量更新
         this.updateBatchById(moviesList);
-        
+
         return moviesList.size();
     }
-    
+
     @Override
     @Transactional
     public int updateMoviesByRegion(String oldRegion, String newRegion) {
         if (oldRegion == null || oldRegion.isEmpty()) {
             throw new BusinessException("原电影区域不能为空");
         }
-        
+
         if (newRegion == null || newRegion.isEmpty()) {
             throw new BusinessException("新电影区域不能为空");
         }
-        
+
         // 查询符合条件的电影
         QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("country", oldRegion).eq("is_deleted", false);
         List<Movies> moviesList = this.list(queryWrapper);
-        
+
         if (moviesList.isEmpty()) {
             return 0;
         }
-        
+
         // 批量更新电影区域
         for (Movies movie : moviesList) {
             movie.setCountry(newRegion);
             movie.setUpdatedAt(LocalDateTime.now());
         }
-        
+
         // 批量更新
         this.updateBatchById(moviesList);
-        
+
         return moviesList.size();
     }
 }

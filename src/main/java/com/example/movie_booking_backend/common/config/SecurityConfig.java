@@ -64,6 +64,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/movies/public/**").permitAll()
                         .requestMatchers("/api/sessions/public/**").permitAll()
+                        .requestMatchers("/api/users/**").permitAll()
+                        .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v2/api-docs", "/swagger-resources/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         // 需要特定角色的接口

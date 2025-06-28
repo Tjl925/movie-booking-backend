@@ -17,6 +17,6 @@ public class SeatVO {
     @ApiModelProperty(value = "列号")
     private Integer columnNumber;
 
-    @ApiModelProperty(value = "状态 (AVAILABLE, BOOKED, LOCKED)")
+    @ApiModelProperty(value = "状态 (AVAILABLE, RESERVED, MAINTENANCE,OCCUPIED)")
     private String status;
 } 
