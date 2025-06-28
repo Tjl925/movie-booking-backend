@@ -17,12 +17,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.ArrayList;
 /**
  * <p>
  * 订单表 服务实现类
@@ -54,71 +57,92 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders> impleme
 
     @Autowired
     private IMovieSessionsService movieSessionsService;
-
+    @Autowired
+    private OrdersMapper ordersMapper;
     private static final int ORDER_EXPIRATION_MINUTES = 15; // 订单支付超时时间（分钟）
 
     @Override
     @Transactional
     public OrderVO createOrder(OrderCreationDTO orderCreationDTO, Long userId) {
-        // 1. 校验场次是否存在且有效
+        // 1. 校验场次
         MovieSessions session = movieSessionsMapper.selectById(orderCreationDTO.getSessionId());
-        if (session == null || session.getDeleted() || session.getSessionTime().isBefore(LocalDateTime.now())) {
-            throw new BusinessException("场次不存在或已过期");
+        if (session == null || session.getDeleted()) {
+            throw new BusinessException("场次不存在或已删除");
         }
-        // 获取电影基础票价和场次价格调整
+
+        // 2. 获取电影和影厅信息
         Movies movie = moviesMapper.selectById(session.getMovieId());
-        BigDecimal basePrice = movie.getBasePrice();
-
         Halls hall = hallsMapper.selectById(session.getHallId());
-        BigDecimal price = basePrice.multiply(hall.getPriceMultiplier());
-        BigDecimal totalAmount = BigDecimal.valueOf(0.0);
-        List<Long> seatIds = orderCreationDTO.getSeatIds();
-        for( Long seatId : seatIds) {
+
+        // 3. 验证座位可用性并计算总价
+        List<Seats> validSeats = new ArrayList<>();
+        BigDecimal totalAmount = BigDecimal.ZERO;
+
+        for(Long seatId : orderCreationDTO.getSeatIds()) {
             Seats seat = seatsMapper.selectById(seatId);
-            if (seat == null || !Objects.equals(seat.getHallId(), hall.getId()) || !seat.getStatus().equals("AVAILABLE")) {
-                throw new BusinessException("座位 " + seatId + " 不可用或不存在");
+            if (seat == null || !seat.getHallId().equals(hall.getId()) || !"AVAILABLE".equals(seat.getStatus())) {
+                throw new BusinessException("座位 " + (seat != null ? seat.getSeatNumber() : seatId) + " 不可用或不存在");
             }
-            totalAmount = totalAmount.add(price.multiply(seat.getPriceMultiplier()));
+            validSeats.add(seat);
+            totalAmount = totalAmount.add(movie.getBasePrice().multiply(hall.getPriceMultiplier()).multiply(seat.getPriceMultiplier()));
         }
 
-        // 2. 尝试锁定座位 (核心步骤，保证原子性)
+        // 4. 锁定座位
         UpdateWrapper<Seats> lockWrapper = new UpdateWrapper<>();
         lockWrapper.in("id", orderCreationDTO.getSeatIds())
-                .eq("hall_id", session.getHallId())
+                .eq("hall_id", hall.getId())
                 .eq("status", "AVAILABLE")
-                .set("status", "LOCKED");
+                .set("status", "RESERVED");
+
         int lockedRows = seatsMapper.update(null, lockWrapper);
         if (lockedRows != orderCreationDTO.getSeatIds().size()) {
             // 回滚已锁定的座位
             UpdateWrapper<Seats> unlockWrapper = new UpdateWrapper<>();
             unlockWrapper.in("id", orderCreationDTO.getSeatIds())
-                    .eq("status", "LOCKED")
+                    .eq("status", "RESERVED")
                     .set("status", "AVAILABLE");
             seatsMapper.update(null, unlockWrapper);
             throw new BusinessException("座位已被预订，请刷新后重试");
         }
-        // 3. 创建订单和订单项
+
+        // 5. 创建订单
         Orders order = new Orders();
+        String orderNumber = "ORD" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
+                + String.format("%04d", ThreadLocalRandom.current().nextInt(10000));
+
+        order.setOrderNumber(orderNumber);
         order.setUserId(userId);
         order.setSessionId(session.getId());
         order.setTotalAmount(totalAmount);
-        order.setStatus("PENDING_PAYMENT");
+        order.setStatus("PENDING");
+        order.setSeatNumbers(validSeats.stream().map(Seats::getSeatNumber).collect(Collectors.joining(",")));
+        order.setTicketCount(validSeats.size());
         order.setCreatedAt(LocalDateTime.now());
         order.setUpdatedAt(LocalDateTime.now());
-        order.setDeleted(false);
-        this.save(order);
-        List<OrderItems> orderItems = orderCreationDTO.getSeatIds().stream().map(seatId -> {
-            Seats seat = seatsMapper.selectById(seatId);
-            OrderItems item = new OrderItems();
-            item.setOrderId(order.getId());
-            item.setSeatId(seatId);
-            item.setSeatNumber(seat.getSeatNumber());
-            item.setPrice(price);
-            item.setCreatedAt(LocalDateTime.now());
-            item.setUpdatedAt(LocalDateTime.now());
-            return item;
-        }).collect(Collectors.toList());
-        orderItemsMapper.insertBatchSomeColumn(orderItems);
+
+        // 6. 保存订单并获取生成的ID
+        ordersMapper.insert(order);
+
+        // 7. 创建订单项（确保不重复）
+        List<OrderItems> orderItems = validSeats.stream()
+                .map(seat -> {
+                    OrderItems item = new OrderItems();
+                    item.setOrderId(order.getId()); // 使用数据库生成的订单ID
+                    item.setSeatId(seat.getId());
+                    item.setPrice(movie.getBasePrice()
+                            .multiply(hall.getPriceMultiplier())
+                            .multiply(seat.getPriceMultiplier()));
+                    item.setCreatedAt(LocalDateTime.now());
+                    item.setUpdatedAt(LocalDateTime.now());
+                    return item;
+                })
+                .collect(Collectors.toList());
+
+        // 8. 批量插入订单项
+        if (!orderItems.isEmpty()) {
+            orderItemsMapper.insertBatchSomeColumn(orderItems);
+        }
+
         return getOrderDetails(order.getId(), userId);
     }
 

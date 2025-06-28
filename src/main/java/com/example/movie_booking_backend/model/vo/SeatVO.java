@@ -4,6 +4,8 @@ import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
+import java.math.BigDecimal;
+
 @Data
 @ApiModel(value = "座位信息视图", description = "场次中的座位信息视图对象")
 public class SeatVO {
@@ -19,4 +21,6 @@ public class SeatVO {
 
     @ApiModelProperty(value = "状态 (AVAILABLE, RESERVED, MAINTENANCE,OCCUPIED)")
     private String status;
+    private String seatType;
+    private BigDecimal priceMultiplier;
 } 

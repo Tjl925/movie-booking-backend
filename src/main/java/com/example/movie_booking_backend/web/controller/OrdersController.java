@@ -31,8 +31,9 @@ public class OrdersController {
 
     @ApiOperation("用户下单（锁定座位，生成待支付订单）")
     @PostMapping
-    public JsonResponse<OrderVO> createOrder(@Valid @RequestBody OrderCreationDTO orderCreationDTO, HttpServletRequest request) {
-        Long userId = (Long) request.getAttribute("userId");
+    public JsonResponse<OrderVO> createOrder(@Valid @RequestBody OrderCreationDTO orderCreationDTO, HttpServletRequest request,Long uid) {
+        Long userId = uid;
+        System.out.println("前端传递的座位列表:"+orderCreationDTO.getSeatIds());
         OrderVO orderVO = ordersService.createOrder(orderCreationDTO, userId);
         return JsonResponse.success(orderVO, "下单成功，请尽快支付");
     }
@@ -74,5 +75,6 @@ public class OrdersController {
         Page<OrderVO> page = ordersService.getUserOrders(new Page<>(current, size), userId);
         return JsonResponse.success(page);
     }
+
 }
 

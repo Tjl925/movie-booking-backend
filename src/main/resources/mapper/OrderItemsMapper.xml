@@ -6,7 +6,6 @@
     <resultMap id="BaseResultMap" type="com.example.movie_booking_backend.model.domain.OrderItems">
         <id column="id" property="id" />
         <result column="order_id" property="orderId" />
-        <result column="seat_number" property="seatNumber" />
         <result column="price" property="price" />
         <result column="created_at" property="createdAt" />
         <result column="updated_at" property="updatedAt" />
@@ -14,10 +13,10 @@
         <result column="seat_id" property="seatId" />
     </resultMap>
     <insert id="insertBatchSomeColumn">
-        INSERT INTO order_items (order_id, seat_id, seat_number, price, created_at, updated_at, is_deleted)
+        INSERT INTO order_items (order_id, seat_id,  price, created_at, updated_at, is_deleted)
         VALUES
         <foreach collection="list" item="item" separator=",">
-            (#{item.orderId}, #{item.seatId}, #{item.seatNumber}, #{item.price}, #{item.createdAt}, #{item.updatedAt}, 0)
+            (#{item.orderId}, #{item.seatId},  #{item.price}, #{item.createdAt}, #{item.updatedAt}, 0)
         </foreach>
     </insert>
     <select id="findSeatIdsBySessionId" resultType="java.lang.Long">
