@@ -1,8 +1,12 @@
 package com.example.movie_booking_backend.web.controller;
 
 import com.example.movie_booking_backend.common.JsonResponse;
+import com.example.movie_booking_backend.model.dto.SeatSelectionDTO;
+import com.example.movie_booking_backend.model.dto.SeatStatusUpdateDTO;
 import com.example.movie_booking_backend.model.dto.SessionDTO;
 import com.example.movie_booking_backend.model.vo.SeatVO;
+import com.example.movie_booking_backend.model.vo.SessionInfo;
+import com.example.movie_booking_backend.model.vo.SessionSeatsVO;
 import com.example.movie_booking_backend.model.vo.SessionVO;
 import com.example.movie_booking_backend.service.IMovieSessionsService;
 import io.swagger.annotations.Api;
@@ -78,6 +82,28 @@ public class MovieSessionsController {
     public JsonResponse<List<SeatVO>> getSeatStatusForSession(@PathVariable Long id) {
         List<SeatVO> seats = movieSessionsService.getSeatStatusForSession(id);
         return JsonResponse.success(seats);
+    }
+
+    @ApiOperation("【前台】获取某电影的所有场次完整信息")
+    @GetMapping("/public/movie/{movieId}/session-infos")
+    public JsonResponse<List<SessionInfo>> getSessionInfos(
+            @PathVariable Long movieId) {
+        List<SessionInfo> result = movieSessionsService.getSessionInfosByMovieId(movieId);
+        return JsonResponse.success(result);
+    }
+
+    @ApiOperation("【前台】获取场次座位选择状态")
+    @GetMapping("/public/{id}/seat-selection")
+    public JsonResponse<SessionSeatsVO> getSeatsForSelection(@PathVariable Long id) {
+        SessionSeatsVO seats = movieSessionsService.getSeatsForSelection(id);
+        return JsonResponse.success(seats);
+    }
+
+    @ApiOperation("【前台】更新单个座位状态")
+    @PostMapping("/public/update-seat-status")
+    public JsonResponse<String> updateSeatStatus(@RequestBody SeatSelectionDTO dto) {
+        movieSessionsService.updateSeatStatus(dto);
+        return JsonResponse.successMessage("座位状态更新成功");
     }
 }
 
