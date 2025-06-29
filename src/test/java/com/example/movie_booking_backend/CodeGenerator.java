@@ -120,14 +120,14 @@ public class CodeGenerator {
                             .customFile(new HashMap<>()); // 自定义配置模板文件，用于指定自定义的模板文件路径，可以格式化文件名
                 })
                 .strategyConfig((scanner, builder) ->
-                        builder.addInclude("movie_sessions") // 设置需要生成的表名
+                        builder.addInclude("seats_sessions") // 设置需要生成的表名
 //                                .addTablePrefix("t_") // 设置过滤表前缀
                                 .entityBuilder().enableFileOverride()// entity存在及覆盖
                                 .enableLombok() // 启用 Lombok
                                 .enableChainModel() // 开启链式模型（默认 false）
                                 .enableRemoveIsPrefix() // 开启Boolean类型字段移除is前缀（默认 false）
-//                                .logicDeleteColumnName("is_deleted") // 设置逻辑删除字段名（数据库字段）
-//                                .logicDeletePropertyName("deleted") // 设置逻辑删除属性名（实体）
+                                .logicDeleteColumnName("is_deleted") // 设置逻辑删除字段名（数据库字段）
+                                .logicDeletePropertyName("deleted") // 设置逻辑删除属性名（实体）
                                 .enableTableFieldAnnotation() // 启用字段注解
                                 .serviceBuilder().enableFileOverride()
                                 .mapperBuilder().enableFileOverride()

@@ -2,18 +2,12 @@ package com.example.movie_booking_backend.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.movie_booking_backend.common.exception.BusinessException;
-import com.example.movie_booking_backend.mapper.HallsMapper;
-import com.example.movie_booking_backend.mapper.MoviesMapper;
-import com.example.movie_booking_backend.mapper.OrderItemsMapper;
+import com.example.movie_booking_backend.mapper.*;
 import com.example.movie_booking_backend.model.domain.*;
-import com.example.movie_booking_backend.mapper.MovieSessionsMapper;
 import com.example.movie_booking_backend.model.dto.SeatSelectionDTO;
 import com.example.movie_booking_backend.model.dto.SeatStatusUpdateDTO;
 import com.example.movie_booking_backend.model.dto.SessionDTO;
-import com.example.movie_booking_backend.model.vo.SeatVO;
-import com.example.movie_booking_backend.model.vo.SessionInfoVO;
-import com.example.movie_booking_backend.model.vo.SessionSeatsVO;
-import com.example.movie_booking_backend.model.vo.SessionVO;
+import com.example.movie_booking_backend.model.vo.*;
 import com.example.movie_booking_backend.service.IHallsService;
 import com.example.movie_booking_backend.service.IMovieSessionsService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -25,7 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -53,7 +49,8 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
 
     @Autowired
     private MovieSessionsMapper movieSessionsMapper;
-
+    @Autowired
+    private SeatsSessionsMapper seatsSessionsMapper;
     @Override
     @Transactional
     public SessionVO createSession(SessionDTO sessionDTO) {
@@ -148,38 +145,35 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
     public List<SeatVO> getSeatStatusForSession(Long sessionId) {
         MovieSessions session = this.getById(sessionId);
         if (session == null) throw new BusinessException("场次不存在");
+
         // 1. 获取影厅的所有座位
         List<Seats> allSeatsInHall = seatsService.list(
                 new QueryWrapper<Seats>()
                         .eq("hall_id", session.getHallId())
                         .eq("is_deleted", false)
         );
-        // 2. 转换为SeatVO并设置状态
+
+        // 2. 获取座位在该场次的状态（从SeatsSessions表）
+        List<com.example.movie_booking_backend.model.domain.SeatsSessions> seatsSessions = seatsSessionsMapper.selectList(
+                new QueryWrapper<com.example.movie_booking_backend.model.domain.SeatsSessions>()
+                        .eq("session_id", sessionId)
+        );
+        Map<Long, String> seatStatusMap = seatsSessions.stream()
+                .collect(Collectors.toMap(com.example.movie_booking_backend.model.domain.SeatsSessions::getSeatId, com.example.movie_booking_backend.model.domain.SeatsSessions::getStatus));
+
+        // 3. 转换为SeatVO并设置状态
         return allSeatsInHall.stream()
                 .map(seat -> {
                     SeatVO seatVO = new SeatVO();
-                    // 手动设置字段映射
                     seatVO.setId(seat.getId());
                     seatVO.setRowNumber(seat.getSeatRow());
                     seatVO.setColumnNumber(seat.getSeatColumn());
-                    String dbStatus = seat.getStatus();
-                    // 根据座位原始状态转换
-                    System.out.println("wocaonima");
-                    switch (seat.getStatus()) {
-                        case "RESERVED":
-                            seatVO.setStatus("RESERVED");
-                            break;
-                        case "MAINTENANCE":
-                            seatVO.setStatus("MAINTENANCE");
-                            break;
-                        case "OCCUPIED":
-                            seatVO.setStatus("OCCUPIE");
-                            break;
-                        default:
-                            seatVO.setStatus("AVAILABLE");
-                    }
+                    seatVO.setSeatType(seat.getSeatType());
+                    seatVO.setPriceMultiplier(seat.getPriceMultiplier());
 
-                    System.out.println("座位ID: " + seat.getId() + ", 数据库status: " + dbStatus + ", 类型: " + dbStatus.getClass());
+                    // 从seatStatusMap获取状态，默认AVAILABLE
+                    String status = seatStatusMap.getOrDefault(seat.getId(), "AVAILABLE");
+                    seatVO.setStatus(status);
                     return seatVO;
                 })
                 .collect(Collectors.toList());
@@ -214,101 +208,71 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
     }
 
 
-    @Transactional
-    @Override
-    public void updateSeatsStatus(List<SeatStatusUpdateDTO> updates) {
-        for (SeatStatusUpdateDTO update : updates) {
-            Seats seat = seatsService.getById(update.getId());
-            if (seat != null) {
-                seat.setStatus(update.getStatus());
-                seat.setUpdatedAt(LocalDateTime.now());
-                seatsService.updateById(seat);
-            }
-        }
-    }
     @Autowired
     private IHallsService hallsService; // 添加这个依赖
 
     @Override
-    public SessionSeatsVO getSeatsForSelection(Long sessionId) {
+    public SeatsSessionsVO getSeatsForSelection(Long sessionId) {
         // 1. 验证场次是否存在并获取影厅ID
         MovieSessions session = this.getById(sessionId);
         if (session == null) {
             throw new BusinessException("场次不存在");
         }
 
-        // 2. 获取影厅信息
+        // 2. 获取影厅信息（用于totalSeats/totalRows/totalColumns）
         Halls hall = hallsMapper.selectById(session.getHallId());
         if (hall == null) {
             throw new BusinessException("影厅信息不存在");
         }
 
-        // 3. 获取影厅所有有效座位
-        List<Seats> allSeatsInHall = seatsService.list(
-                new QueryWrapper<Seats>()
-                        .eq("hall_id", session.getHallId())
+        // 3. 获取该场次的所有座位关联信息
+        List<SeatsSessions> seatsSessionsList = seatsSessionsMapper.selectList(
+                new QueryWrapper<SeatsSessions>()
+                        .eq("session_id", sessionId)
                         .eq("is_deleted", false)
         );
-        // 5. 转换并设置座位状态（完全手动映射）
-        List<SeatVO> seatVOs = allSeatsInHall.stream()
+
+        // 4. 提取所有座位ID
+        List<Long> seatIds = seatsSessionsList.stream()
+                .map(SeatsSessions::getSeatId)
+                .collect(Collectors.toList());
+
+        // 5. 批量查询座位详细信息
+        List<Seats> seatsList = seatIds.isEmpty() ?
+                Collections.emptyList() :
+                seatsService.listByIds(seatIds);
+
+        // 6. 转换为SeatSessionVO列表
+        List<SeatSessionVO> seatSessionVOs = seatsList.stream()
                 .map(seat -> {
-                    SeatVO seatVO = new SeatVO();
-                    // 手动映射所有字段
-                    seatVO.setId(seat.getId());
-                    seatVO.setRowNumber(seat.getSeatRow());     // 关键修改点
-                    seatVO.setColumnNumber(seat.getSeatColumn()); // 关键修改点
-                    seatVO.setSeatType(seat.getSeatType());
-                    seatVO.setPriceMultiplier(seat.getPriceMultiplier());
-                    // 状态设置
-                    switch (seat.getStatus()) {
-                        case "RESERVED":
-                            seatVO.setStatus("RESERVED");
-                            break;
-                        case "MAINTENANCE":
-                            seatVO.setStatus("MAINTENANCE");
-                            break;
-                        case "OCCUPIED":
-                            seatVO.setStatus("OCCUPIED");
-                            break;
-                        default:
-                            seatVO.setStatus("AVAILABLE");
-                    }
-                    return seatVO;
+                    // 找到对应的SeatsSessions记录
+                    SeatsSessions sessionRecord = seatsSessionsList.stream()
+                            .filter(ss -> ss.getSeatId().equals(seat.getId()))
+                            .findFirst()
+                            .orElse(null);
+
+                    SeatSessionVO vo = new SeatSessionVO();
+                    vo.setId(seat.getId()); // 或者 sessionRecord.getId() 根据需求决定
+                    vo.setSeatId(seat.getId());
+                    vo.setSessionId(sessionId);
+                    vo.setRowNumber(seat.getSeatRow());
+                    vo.setColumnNumber(seat.getSeatColumn());
+                    vo.setSeatType(seat.getSeatType());
+                    vo.setPriceMultiplier(seat.getPriceMultiplier());
+                    vo.setStatus(sessionRecord != null ? sessionRecord.getStatus() : "AVAILABLE");
+                    vo.setCreatedAt(sessionRecord != null ? sessionRecord.getCreatedAt() : null);
+                    vo.setUpdatedAt(sessionRecord != null ? sessionRecord.getUpdatedAt() : null);
+                    vo.setDeleted(sessionRecord != null ? sessionRecord.getDeleted() : false);
+                    return vo;
                 })
                 .collect(Collectors.toList());
 
-        // 6. 封装返回结果
-        SessionSeatsVO result = new SessionSeatsVO();
-        result.setSeats(seatVOs);
+        // 7. 封装返回结果
+        SeatsSessionsVO result = new SeatsSessionsVO();
+        result.setSeatSessions(seatSessionVOs);
         result.setTotalSeats(hall.getTotalSeats());
         result.setTotalRows(hall.getTotalRows());
         result.setTotalColumns(hall.getTotalColumns());
-
         return result;
-    }
+    }}
 
-    @Transactional
-    @Override
-    public void updateSeatStatus(SeatSelectionDTO dto) {
-        if (dto.getSeatId() == null || dto.getStatus() == null) {
-            throw new BusinessException("座位ID和状态不能为空");
-        }
-
-        Seats seat = seatsService.getById(dto.getSeatId());
-        if (seat == null) {
-            throw new BusinessException("座位不存在");
-        }
-
-        // 验证状态转换是否合法
-        if ("RESERVED".equals(dto.getStatus())) {
-            if (!"AVAILABLE".equals(seat.getStatus())) {
-                throw new BusinessException("只能预定可用座位");
-            }
-        }
-
-        seat.setStatus(dto.getStatus());
-        seat.setUpdatedAt(LocalDateTime.now());
-        seatsService.updateById(seat);
-    }
-
-}

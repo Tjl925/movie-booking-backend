@@ -3,6 +3,7 @@ package com.example.movie_booking_backend.web.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.movie_booking_backend.common.JsonResponse;
 import com.example.movie_booking_backend.model.dto.OrderCreationDTO;
+import com.example.movie_booking_backend.model.dto.OrderDetailsDTO;
 import com.example.movie_booking_backend.model.vo.OrderVO;
 import com.example.movie_booking_backend.service.IOrdersService;
 import io.swagger.annotations.Api;
@@ -60,7 +61,7 @@ public class OrdersController {
 
     @ApiOperation("用户查询订单详情")
     @GetMapping("/{id}")
-    public JsonResponse<OrderVO> getOrderDetails(@PathVariable Long id, HttpServletRequest request) {
+    public JsonResponse<OrderVO> getOrderDetail(@PathVariable Long id, HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         OrderVO orderVO = ordersService.getOrderDetails(id, userId);
         return JsonResponse.success(orderVO);
@@ -74,6 +75,13 @@ public class OrdersController {
         Long userId = (Long) request.getAttribute("userId");
         Page<OrderVO> page = ordersService.getUserOrders(new Page<>(current, size), userId);
         return JsonResponse.success(page);
+    }
+    @PostMapping("/detail")
+    public JsonResponse<OrderVO> getOrderDetail(
+            @RequestBody OrderDetailsDTO dto
+    ) {
+        OrderVO orderVO = ordersService.getOrderDetails(dto.getOrderId(), dto.getUserId());
+        return JsonResponse.success(orderVO);
     }
 
 }

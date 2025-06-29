@@ -23,12 +23,14 @@
             h.hall_type AS hallType,
             h.total_seats AS totalSeats,
             m.base_price AS basePrice,
-            m.base_price  AS minPrice,
+            m.base_price AS minPrice,
             (
                 SELECT COUNT(*)
-                FROM seats s
-                WHERE s.hall_id = h.id
-                  AND s.status = 'AVAILABLE'
+                FROM seats_sessions ss
+                         JOIN seats s ON ss.seat_id = s.id
+                WHERE ss.session_id = ms.id
+                  AND ss.status = 'AVAILABLE'
+                  AND ss.is_deleted = false
                   AND s.is_deleted = false
             ) AS availableSeats
         FROM

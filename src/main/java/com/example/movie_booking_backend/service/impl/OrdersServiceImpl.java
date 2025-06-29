@@ -54,7 +54,8 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders> impleme
 
     @Autowired
     private PaymentsMapper paymentsMapper;
-
+    @Autowired
+    private SeatsSessionsMapper seatsSessionsMapper;
     @Autowired
     private IMovieSessionsService movieSessionsService;
     @Autowired
@@ -79,33 +80,49 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders> impleme
         BigDecimal totalAmount = BigDecimal.ZERO;
 
         for(Long seatId : orderCreationDTO.getSeatIds()) {
+            // 3.1 获取座位基础信息
             Seats seat = seatsMapper.selectById(seatId);
-            if (seat == null || !seat.getHallId().equals(hall.getId()) || !"AVAILABLE".equals(seat.getStatus())) {
-                throw new BusinessException("座位 " + (seat != null ? seat.getSeatNumber() : seatId) + " 不可用或不存在");
+            if (seat == null || !seat.getHallId().equals(hall.getId())) {
+                throw new BusinessException("座位 " + (seat != null ? seat.getSeatNumber() : seatId) + " 不存在或不属于该影厅");
             }
+
+            // 3.2 检查座位在该场次的状态
+            SeatsSessions seatSession = seatsSessionsMapper.selectOne(
+                    new QueryWrapper<SeatsSessions>()
+                            .eq("seat_id", seatId)
+                            .eq("session_id", session.getId())
+            );
+
+            if (seatSession == null || !"AVAILABLE".equals(seatSession.getStatus())) {
+                throw new BusinessException("座位 " + seat.getSeatNumber() + " 不可用");
+            }
+
             validSeats.add(seat);
-            totalAmount = totalAmount.add(movie.getBasePrice().multiply(hall.getPriceMultiplier()).multiply(seat.getPriceMultiplier()));
+            totalAmount = totalAmount.add(movie.getBasePrice()
+                    .multiply(hall.getPriceMultiplier())
+                    .multiply(seat.getPriceMultiplier()));
         }
 
-        // 4. 锁定座位
-        UpdateWrapper<Seats> lockWrapper = new UpdateWrapper<>();
-        lockWrapper.in("id", orderCreationDTO.getSeatIds())
-                .eq("hall_id", hall.getId())
+        // 4. 锁定座位（更新SeatsSessions表的状态）
+        UpdateWrapper<SeatsSessions> lockWrapper = new UpdateWrapper<>();
+        lockWrapper.in("seat_id", orderCreationDTO.getSeatIds())
+                .eq("session_id", session.getId())
                 .eq("status", "AVAILABLE")
                 .set("status", "RESERVED");
 
-        int lockedRows = seatsMapper.update(null, lockWrapper);
+        int lockedRows = seatsSessionsMapper.update(null, lockWrapper);
         if (lockedRows != orderCreationDTO.getSeatIds().size()) {
             // 回滚已锁定的座位
-            UpdateWrapper<Seats> unlockWrapper = new UpdateWrapper<>();
-            unlockWrapper.in("id", orderCreationDTO.getSeatIds())
+            UpdateWrapper<SeatsSessions> unlockWrapper = new UpdateWrapper<>();
+            unlockWrapper.in("seat_id", orderCreationDTO.getSeatIds())
+                    .eq("session_id", session.getId())
                     .eq("status", "RESERVED")
                     .set("status", "AVAILABLE");
-            seatsMapper.update(null, unlockWrapper);
+            seatsSessionsMapper.update(null, unlockWrapper);
             throw new BusinessException("座位已被预订，请刷新后重试");
         }
 
-        // 5. 创建订单
+        // 5. 创建订单（后续代码保持不变）
         Orders order = new Orders();
         String orderNumber = "ORD" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
                 + String.format("%04d", ThreadLocalRandom.current().nextInt(10000));
@@ -123,11 +140,11 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders> impleme
         // 6. 保存订单并获取生成的ID
         ordersMapper.insert(order);
 
-        // 7. 创建订单项（确保不重复）
+        // 7. 创建订单项
         List<OrderItems> orderItems = validSeats.stream()
                 .map(seat -> {
                     OrderItems item = new OrderItems();
-                    item.setOrderId(order.getId()); // 使用数据库生成的订单ID
+                    item.setOrderId(order.getId());
                     item.setSeatId(seat.getId());
                     item.setPrice(movie.getBasePrice()
                             .multiply(hall.getPriceMultiplier())
@@ -218,29 +235,32 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders> impleme
     @Override
     @Transactional
     public void handleExpiredOrders() {
-        // 找出所有已超时的待支付订单
-        // 计算过期时间点：当前时间减去订单过期时间（分钟）
         LocalDateTime expirationTime = LocalDateTime.now().minusMinutes(ORDER_EXPIRATION_MINUTES);
-        
+
         List<Orders> expiredOrders = this.list(new QueryWrapper<Orders>()
                 .eq("status", "PENDING")
                 .le("created_at", expirationTime));
 
         for (Orders order : expiredOrders) {
             releaseSeatsForOrder(order);
-            order.setStatus("EXPIRED");
+            order.setStatus("CANCELLED");
             order.setUpdatedAt(LocalDateTime.now());
             this.updateById(order);
         }
     }
 
     private void releaseSeatsForOrder(Orders order) {
-        List<OrderItems> items = orderItemsMapper.selectList(new QueryWrapper<OrderItems>().eq("order_id", order.getId()));
+        List<OrderItems> items = orderItemsMapper.selectList(
+                new QueryWrapper<OrderItems>().eq("order_id", order.getId()));
+
         if (!items.isEmpty()) {
-            List<Long> seatIds = items.stream().map(OrderItems::getSeatId).collect(Collectors.toList());
-            UpdateWrapper<Seats> unlockWrapper = new UpdateWrapper<>();
-            unlockWrapper.in("id", seatIds).eq("status", "LOCKED").set("status", "AVAILABLE");
-            seatsMapper.update(null, unlockWrapper);
+            // 更新 seats_sessions 表状态
+            UpdateWrapper<SeatsSessions> unlockWrapper = new UpdateWrapper<>();
+            unlockWrapper.in("seat_id", items.stream().map(OrderItems::getSeatId).collect(Collectors.toList()))
+                    .eq("session_id", order.getSessionId())
+                    .eq("status", "RESERVED")  // 注意状态值要与创建订单时设置的一致
+                    .set("status", "AVAILABLE");
+            seatsSessionsMapper.update(null, unlockWrapper);
         }
     }
 
