@@ -10,7 +10,6 @@
         <result column="seat_row" property="seatRow" />
         <result column="seat_column" property="seatColumn" />
         <result column="seat_type" property="seatType" />
-        <result column="status" property="status" />
         <result column="price_multiplier" property="priceMultiplier" />
         <result column="created_at" property="createdAt" />
         <result column="updated_at" property="updatedAt" />

@@ -4,9 +4,9 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.io.Serializable;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
@@ -16,48 +16,36 @@ import lombok.experimental.Accessors;
 
 /**
  * <p>
- * 座位表
+ * 座位场次关联表
  * </p>
  *
  * @author tjl
- * @since 2025-06-28
+ * @since 2025-06-29
  */
 @Data
 @EqualsAndHashCode(callSuper = false)
 @Accessors(chain = true)
-@TableName("seats")
-@ApiModel(value="Seats对象", description="座位表")
-public class Seats implements Serializable {
+@TableName("seats_sessions")
+@ApiModel(value="SeatsSessions对象", description="座位场次关联表")
+public class SeatsSessions implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-        @ApiModelProperty(value = "座位ID")
+        @ApiModelProperty(value = "ID")
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
 
-        @ApiModelProperty(value = "影厅ID")
-    @TableField("hall_id")
-    private Long hallId;
+        @ApiModelProperty(value = "座位ID")
+    @TableField("seat_id")
+    private Long seatId;
 
-        @ApiModelProperty(value = "座位号")
-    @TableField("seat_number")
-    private String seatNumber;
+        @ApiModelProperty(value = "场次ID")
+    @TableField("session_id")
+    private Long sessionId;
 
-        @ApiModelProperty(value = "行号")
-    @TableField("seat_row")
-    private Integer seatRow;
-
-        @ApiModelProperty(value = "列号")
-    @TableField("seat_column")
-    private Integer seatColumn;
-
-        @ApiModelProperty(value = "座位类型")
-    @TableField("seat_type")
-    private String seatType;
-
-        @ApiModelProperty(value = "价格倍数，根据座位类型计算")
-    @TableField("price_multiplier")
-    private BigDecimal priceMultiplier;
+        @ApiModelProperty(value = "状态")
+    @TableField("status")
+    private String status;
 
         @ApiModelProperty(value = "创建时间")
     @TableField("created_at")
@@ -69,6 +57,7 @@ public class Seats implements Serializable {
 
         @ApiModelProperty(value = "是否删除")
     @TableField("is_deleted")
+        @TableLogic
     private Boolean deleted;
 
 

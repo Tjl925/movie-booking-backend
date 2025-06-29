@@ -5,7 +5,7 @@ import com.example.movie_booking_backend.model.dto.SeatSelectionDTO;
 import com.example.movie_booking_backend.model.dto.SessionDTO;
 import com.example.movie_booking_backend.model.vo.SeatVO;
 import com.example.movie_booking_backend.model.vo.SessionInfoVO;
-import com.example.movie_booking_backend.model.vo.SessionSeatsVO;
+import com.example.movie_booking_backend.model.vo.SeatsSessionsVO;
 import com.example.movie_booking_backend.model.vo.SessionVO;
 import com.example.movie_booking_backend.service.IMovieSessionsService;
 import io.swagger.annotations.Api;
@@ -93,16 +93,11 @@ public class MovieSessionsController {
 
     @ApiOperation("【前台】获取场次座位选择状态")
     @GetMapping("/public/{id}/seat-selection")
-    public JsonResponse<SessionSeatsVO> getSeatsForSelection(@PathVariable Long id) {
-        SessionSeatsVO seats = movieSessionsService.getSeatsForSelection(id);
+    public JsonResponse<SeatsSessionsVO> getSeatsForSelection(@PathVariable Long id) {
+        SeatsSessionsVO seats = movieSessionsService.getSeatsForSelection(id);
         return JsonResponse.success(seats);
     }
 
-    @ApiOperation("【前台】更新单个座位状态")
-    @PostMapping("/public/update-seat-status")
-    public JsonResponse<String> updateSeatStatus(@RequestBody SeatSelectionDTO dto) {
-        movieSessionsService.updateSeatStatus(dto);
-        return JsonResponse.successMessage("座位状态更新成功");
-    }
+
 }
 
