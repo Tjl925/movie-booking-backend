@@ -104,4 +104,4 @@ public class JwtUtils {
         final String tokenUsername = getUsernameFromToken(token);
         return (username.equals(tokenUsername) && !isTokenExpired(token));
     }
-} 
+}

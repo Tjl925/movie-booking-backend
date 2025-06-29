@@ -44,4 +44,16 @@
           AND m.is_deleted = false
         ORDER BY ms.session_time ASC
     </select>
+    
+    <!-- 根据关键字查询场次ID列表（匹配电影标题或影厅名称） -->
+    <select id="findSessionIdsByKeyword" resultType="java.lang.Long">
+        SELECT DISTINCT ms.id
+        FROM movie_sessions ms
+        JOIN movies m ON ms.movie_id = m.id
+        JOIN halls h ON ms.hall_id = h.id
+        WHERE (m.title LIKE CONCAT('%', #{keyword}, '%') OR h.hall_name LIKE CONCAT('%', #{keyword}, '%'))
+        AND ms.is_deleted = false
+        AND m.is_deleted = false
+        AND h.is_deleted = false
+    </select>
 </mapper>

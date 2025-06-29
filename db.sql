@@ -205,7 +205,6 @@ CREATE TABLE seats
     seat_row         INT         NOT NULL COMMENT '行号',
     seat_column      INT         NOT NULL COMMENT '列号',
     seat_type        ENUM ('REGULAR', 'VIP')                                   DEFAULT 'REGULAR' COMMENT '座位类型',
-    status           ENUM ('AVAILABLE', 'RESERVED', 'OCCUPIED', 'MAINTENANCE') DEFAULT 'AVAILABLE' COMMENT '状态',
     price_multiplier DECIMAL(3, 2)                                             DEFAULT 1.00 COMMENT '价格倍数，根据座位类型计算',
     created_at       TIMESTAMP                                                 DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at       TIMESTAMP                                                 DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -213,7 +212,6 @@ CREATE TABLE seats
     UNIQUE KEY uk_hall_seat (hall_id, seat_number),
     INDEX idx_hall_id (hall_id),
     INDEX idx_seat_type (seat_type),
-    INDEX idx_status (status),
     INDEX idx_is_deleted (is_deleted),
     CONSTRAINT fk_seat_hall FOREIGN KEY (hall_id) REFERENCES halls (id)
 ) ENGINE = InnoDB
@@ -243,6 +241,26 @@ CREATE TABLE movie_sessions
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci COMMENT ='电影场次表';
+
+-- 创建座位场次关联表
+CREATE TABLE seats_sessions
+(
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT 'ID',
+    seat_id       BIGINT NOT NULL COMMENT '座位ID',
+    session_id    BIGINT NOT NULL COMMENT '场次ID',
+    status        ENUM ('AVAILABLE', 'RESERVED', 'OCCUPIED', 'MAINTENANCE') DEFAULT 'AVAILABLE' COMMENT '状态',
+    created_at    TIMESTAMP  DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at    TIMESTAMP  DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    is_deleted    TINYINT(1) DEFAULT 0 COMMENT '是否删除',
+    UNIQUE KEY uk_seat_session (seat_id, session_id),
+    INDEX idx_seat_id (seat_id),
+    INDEX idx_session_id (session_id),
+    INDEX idx_is_deleted (is_deleted),
+    CONSTRAINT fk_seat FOREIGN KEY (seat_id) REFERENCES seats (id),
+    CONSTRAINT fk_session FOREIGN KEY (session_id) REFERENCES movie_sessions (id)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci COMMENT ='座位场次关联表';
 
 -- ==================== 订单管理模块 ====================
 
@@ -281,16 +299,15 @@ CREATE TABLE order_items
 (
     id          BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '订单项ID',
     order_id    BIGINT         NOT NULL COMMENT '订单ID',
-    seat_number VARCHAR(20)    NOT NULL COMMENT '座位号',
+    seat_id     BIGINT         NOT NULL COMMENT '座位ID',
     price       DECIMAL(10, 2) NOT NULL COMMENT '价格',
     created_at  TIMESTAMP  DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at  TIMESTAMP  DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     is_deleted  TINYINT(1) DEFAULT 0 COMMENT '是否删除',
     INDEX idx_order_id (order_id),
-    INDEX idx_seat_number (seat_number),
-    UNIQUE KEY uk_order_seat (order_id, seat_number),
     INDEX idx_is_deleted (is_deleted),
-    CONSTRAINT fk_orderitem_order FOREIGN KEY (order_id) REFERENCES orders (id)
+    CONSTRAINT fk_orderitem_order FOREIGN KEY (order_id) REFERENCES orders (id),
+    CONSTRAINT fk_orderitem_seat FOREIGN KEY (seat_id) REFERENCES seats (id)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci COMMENT ='订单项表';
@@ -464,7 +481,6 @@ SELECT ms.id      as session_id,
        CASE
            WHEN o.id IS NOT NULL AND o.status IN ('PAID', 'COMPLETED') THEN 'OCCUPIED'
            WHEN o.id IS NOT NULL AND o.status = 'PENDING' THEN 'RESERVED'
-           ELSE s.status
            END    as current_status,
        o.id       as order_id,
        o.order_number,
@@ -1037,3 +1053,12 @@ SELECT '- 场次管理（电影场次、时间安排）' as module3;
 SELECT '- 订单管理（订单、订单项、支付）' as module4;
 SELECT '- 操作日志（系统操作记录）' as module5;
 SELECT '- 视图和存储过程（数据查询和业务逻辑）' as module6;
+
+-- 为每个场次的每个座位生成座位场次关联数据
+INSERT INTO seats_sessions (seat_id, session_id, status)
+SELECT s.id, ms.id, 'AVAILABLE'
+FROM seats s
+CROSS JOIN movie_sessions ms
+WHERE s.hall_id = ms.hall_id
+  AND s.is_deleted = 0
+  AND ms.is_deleted = 0;

@@ -11,7 +11,7 @@ import java.util.List;
 @ApiModel(value = "SeatsSessionsVO", description = "座位场次关联信息视图对象")
 public class SeatsSessionsVO {
     @ApiModelProperty(value = "座位场次关联列表")
-    private List<SeatSessionVO> seatSessions; // 确保这个字段名与前端一致
+    private List<SeatSessionVO> seatSessions;
 
     @ApiModelProperty(value = "总座位数")
     private Integer totalSeats;

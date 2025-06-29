@@ -21,6 +21,7 @@ public class SeatVO {
 
     @ApiModelProperty(value = "状态 (AVAILABLE, RESERVED, MAINTENANCE,OCCUPIED)")
     private String status;
+
     private String seatType;
     private BigDecimal priceMultiplier;
-} 
+}

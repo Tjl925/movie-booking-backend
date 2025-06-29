@@ -79,10 +79,10 @@ public class MoviesController {
     }
 
     @ApiOperation("【后台】上传电影海报")
-    @PostMapping("/poster/upload")
-    public JsonResponse<String> uploadPoster(@RequestParam("file") MultipartFile file) {
+    @PostMapping("/{id}/poster")
+    public JsonResponse<String> uploadPoster(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
         try {
-            String url = moviesService.uploadPoster(file);
+            String url = moviesService.uploadPoster(id, file);
             return JsonResponse.success(url, "海报上传成功");
         } catch (Exception e) {
             return JsonResponse.failure("海报上传失败: " + e.getMessage());
@@ -90,10 +90,10 @@ public class MoviesController {
     }
 
     @ApiOperation("【后台】上传电影视频")
-    @PostMapping("/video/upload")
-    public JsonResponse<String> uploadVideo(@RequestParam("file") MultipartFile file) {
+    @PostMapping("/{id}/video")
+    public JsonResponse<String> uploadVideo(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
         try {
-            String url = moviesService.uploadVideo(file);
+            String url = moviesService.uploadVideo(id, file);
             return JsonResponse.success(url, "视频上传成功");
         } catch (Exception e) {
             return JsonResponse.failure("视频上传失败: " + e.getMessage());

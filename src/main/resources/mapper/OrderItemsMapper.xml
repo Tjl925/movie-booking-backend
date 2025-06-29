@@ -6,6 +6,7 @@
     <resultMap id="BaseResultMap" type="com.example.movie_booking_backend.model.domain.OrderItems">
         <id column="id" property="id" />
         <result column="order_id" property="orderId" />
+        <result column="seat_number" property="seatNumber" />
         <result column="price" property="price" />
         <result column="created_at" property="createdAt" />
         <result column="updated_at" property="updatedAt" />
@@ -22,10 +23,9 @@
     <select id="findSeatIdsBySessionId" resultType="java.lang.Long">
         SELECT oi.seat_id
         FROM order_items oi
-                 JOIN orders o ON oi.order_id = o.id
+        JOIN orders o ON oi.order_id = o.id
         WHERE o.session_id = #{sessionId}
-          AND o.is_deleted = 0
-          AND oi.is_deleted = 0
+        AND o.is_deleted = 0
+        AND oi.is_deleted = 0
     </select>
-
 </mapper>

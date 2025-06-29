@@ -19,15 +19,17 @@ public interface IOrdersService extends IService<Orders> {
 
     OrderVO createOrder(OrderCreationDTO orderCreationDTO, Long userId);
 
+    Orders getOrders(Long orderId);
+
     OrderVO getOrderDetails(Long orderId, Long userId);
 
     Page<OrderVO> getUserOrders(Page<Orders> page, Long userId);
 
     void cancelOrder(Long orderId, Long userId);
 
-    // 支付成功的回调处理
-    void processSuccessfulPayment(Long orderId);
-
     // 处理超时的订单
     void handleExpiredOrders();
+    
+    // 更新订单信息（支付成功后调用）
+    boolean updateOrder(Orders order);
 }

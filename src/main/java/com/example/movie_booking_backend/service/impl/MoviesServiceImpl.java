@@ -11,11 +11,15 @@ import com.example.movie_booking_backend.service.IMoviesService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -29,9 +33,14 @@ import java.util.*;
  */
 @Service
 public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> implements IMoviesService {
+    @Value("${file-upload-path}")
+    private String uploadBaseDir;
 
-    @Autowired
-    private FileService fileService;
+    private static final List<String> ALLOWED_CONTENT_TYPES = Arrays.asList(
+            "image/jpeg", "image/png", "image/gif"
+    );
+
+
 
     @Override
     @Transactional
@@ -91,13 +100,115 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
     }
 
     @Override
-    public String uploadPoster(MultipartFile file) throws IOException {
-        return (String) fileService.uploadFile(file, "posters").get("url");
+    public String uploadPoster(Long movieId, MultipartFile file) {
+        // 1. 验证电影存在性
+        Movies movie = moviesMapper.selectById(movieId);
+        if (movie == null || movie.getDeleted()) {
+            throw new BusinessException("电影不存在或已被删除");
+        }
+
+        // 2. 验证文件有效性（仅图片）
+        validatePosterFile(file);
+
+        // 3. 生成存储路径
+        String relativePath = generatePosterPath(movieId, file.getOriginalFilename());
+        Path storagePath = Paths.get(uploadBaseDir, relativePath);
+
+        try {
+            // 4. 确保目录存在
+            Files.createDirectories(storagePath.getParent());
+
+            // 5. 存储文件
+            file.transferTo(storagePath);
+
+            // 6. 更新数据库
+            movie.setPosterUrl(relativePath);
+            moviesMapper.updateById(movie);
+
+            return relativePath;
+        } catch (IOException e) {
+            log.error("海报存储失败", e);
+            throw new BusinessException("海报上传失败，请重试");
+        }
     }
 
     @Override
-    public String uploadVideo(MultipartFile file) throws IOException {
-        return (String) fileService.uploadFile(file, "videos").get("url");
+    public String uploadVideo(Long movieId, MultipartFile file) {
+        // 1. 验证电影存在性
+        Movies movie = moviesMapper.selectById(movieId);
+        if (movie == null || movie.getDeleted()) {
+            throw new BusinessException("电影不存在或已被删除");
+        }
+
+        // 2. 验证文件有效性（仅视频）
+        validateVideoFile(file);
+
+        // 3. 生成存储路径
+        String relativePath = generateTrailerPath(movieId, file.getOriginalFilename());
+        Path storagePath = Paths.get(uploadBaseDir, relativePath);
+
+        try {
+            // 4. 确保目录存在
+            Files.createDirectories(storagePath.getParent());
+
+            // 5. 存储文件
+            file.transferTo(storagePath);
+
+            // 6. 更新数据库
+            movie.setTrailerUrl(relativePath);
+            moviesMapper.updateById(movie);
+
+            return relativePath;
+        } catch (IOException e) {
+            log.error("预告片存储失败", e);
+            throw new BusinessException("预告片上传失败，请重试");
+        }
+    }
+
+    // 验证海报文件
+    private void validatePosterFile(MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new BusinessException("海报文件不能为空");
+        }
+        String contentType = file.getContentType();
+        if (!ALLOWED_CONTENT_TYPES.contains(contentType)) {
+            throw new BusinessException("仅支持JPEG/PNG/GIF格式的图片");
+        }
+        if (file.getSize() > 5 * 1024 * 1024) {
+            throw new BusinessException("海报大小不能超过5MB");
+        }
+    }
+
+    // 验证视频文件
+    private static final List<String> ALLOWED_VIDEO_TYPES = Arrays.asList(
+            "video/mp4", "video/avi", "video/mpeg", "video/quicktime"
+    );
+
+    private void validateVideoFile(MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new BusinessException("视频文件不能为空");
+        }
+        String contentType = file.getContentType();
+        if (!ALLOWED_VIDEO_TYPES.contains(contentType)) {
+            throw new BusinessException("仅支持MP4/AVI/MPEG/MOV格式的视频");
+        }
+        if (file.getSize() > 100 * 1024 * 1024) {
+            throw new BusinessException("视频大小不能超过100MB");
+        }
+    }
+
+    // 生成海报路径
+    private String generatePosterPath(Long movieId, String originalFilename) {
+        String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+        String filename = "movie_" + movieId + "_poster_" + System.currentTimeMillis() + extension;
+        return "/posters/" + filename;
+    }
+
+    // 生成预告片路径
+    private String generateTrailerPath(Long movieId, String originalFilename) {
+        String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+        String filename = "movie_" + movieId + "_trailer_" + System.currentTimeMillis() + extension;
+        return "/trailers/" + filename;
     }
 
     @Autowired

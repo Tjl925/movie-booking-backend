@@ -9,7 +9,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
  * </p>
  *
  * @author tjl
- * @since 2025-06-29
+ * @since 2025-06-28
  */
 public interface ISeatsSessionsService extends IService<SeatsSessions> {
 

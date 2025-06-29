@@ -16,7 +16,7 @@ import com.example.movie_booking_backend.model.domain.SeatsSessions;
  *
  *
  * @author tjl
- * @since 2025-06-29
+ * @since 2025-06-28
  * @version v1.0
  */
 @RestController

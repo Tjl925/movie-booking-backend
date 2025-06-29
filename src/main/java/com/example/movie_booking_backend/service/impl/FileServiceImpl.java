@@ -148,46 +148,6 @@ public class FileServiceImpl implements FileService {
         }
     }
 // ... existing code ...
-
-    @Override
-    public Map upload(MultipartFile file) throws IOException {
-        Map<String, String> map = storeFile(file, Paths.get(fileUploadPath, "image").toString());
-        return map;
-    }
-
-    private static Map<String, String> storeFile(MultipartFile file, String fileUploadPath) throws IOException {
-
-        String yearMonth = SDF.format(new Date());//当前年月
-        //String random = "" + (int) (Math.random() * 1000);//随机4位数,没补0
-        String fileName = file.getOriginalFilename();//文件全名
-        String suffix = suffix(fileName);//文件后缀
-        String relPath = "/" + yearMonth + "/" + "-" + UUID.randomUUID().toString().replaceAll("-","") + suffix;
-        String toPath = fileUploadPath + relPath;
-        FileOutputStream out = null;
-
-        File toFile = new File(toPath).getParentFile();
-        if (!toFile.exists()) {
-            toFile.mkdirs(); //自动创建目录
-        }
-        try {
-            out = new FileOutputStream(toPath);
-            out.write(file.getBytes());
-            out.flush();
-            Map<String, String> map = new HashMap();
-            map.put("url", "./image" + relPath);
-            log.info(relPath);
-            return map;
-        } catch (FileNotFoundException fnfe) {
-            throw fnfe;
-        } catch (IOException ioe) {
-            throw ioe;
-        } finally {
-            if (out != null) {
-                out.close();
-            }
-        }
-    }
-
     /**
      * 后缀名或empty："a.png" => ".png"
      */

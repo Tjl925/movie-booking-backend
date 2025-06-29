@@ -122,7 +122,7 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders> impleme
             throw new BusinessException("座位已被预订，请刷新后重试");
         }
 
-        // 5. 创建订单（后续代码保持不变）
+        // 5. 创建订单
         Orders order = new Orders();
         String orderNumber = "ORD" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
                 + String.format("%04d", ThreadLocalRandom.current().nextInt(10000));
@@ -164,6 +164,11 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders> impleme
     }
 
     @Override
+    public Orders getOrders(Long orderId) {
+        return this.getById(orderId);
+    }
+
+    @Override
     public OrderVO getOrderDetails(Long orderId, Long userId) {
         Orders order = this.getOne(new QueryWrapper<Orders>().eq("id", orderId).eq("user_id", userId));
         if (order == null) throw new BusinessException("订单不存在");
@@ -191,7 +196,7 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders> impleme
     public void cancelOrder(Long orderId, Long userId) {
         Orders order = this.getOne(new QueryWrapper<Orders>().eq("id", orderId).eq("user_id", userId));
         if (order == null) throw new BusinessException("订单不存在");
-        if (!"PENDING_PAYMENT".equals(order.getStatus())) {
+        if (!"PENDING".equals(order.getStatus())) {
             throw new BusinessException("只有待支付的订单才能取消");
         }
 
@@ -200,36 +205,6 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders> impleme
         order.setStatus("CANCELLED");
         order.setUpdatedAt(LocalDateTime.now());
         this.updateById(order);
-    }
-
-    @Override
-    @Transactional
-    public void processSuccessfulPayment(Long orderId) {
-        Orders order = this.getById(orderId);
-        if (order == null || !"PENDING_PAYMENT".equals(order.getStatus())) {
-            return;
-        }
-        // 1. 更新订单状态
-        order.setStatus("CONFIRMED");
-        order.setUpdatedAt(LocalDateTime.now());
-        this.updateById(order);
-        // 2. 更新座位状态
-        List<OrderItems> items = orderItemsMapper.selectList(new QueryWrapper<OrderItems>().eq("order_id", orderId));
-        List<Long> seatIds = items.stream().map(OrderItems::getSeatId).collect(Collectors.toList());
-        UpdateWrapper<Seats> updateWrapper = new UpdateWrapper<>();
-        updateWrapper.in("id", seatIds).eq("status", "LOCKED").set("status", "BOOKED");
-        seatsMapper.update(null, updateWrapper);
-        // 3. 创建支付记录
-        Payments payment = new Payments();
-        payment.setOrderId(orderId);
-        payment.setUserId(order.getUserId());
-        payment.setPaymentAmount(order.getTotalAmount());
-        payment.setPaymentMethod("CASH");
-        payment.setPaymentStatus("SUCCESS");
-        payment.setTransactionId(UUID.randomUUID().toString());
-        payment.setCreatedAt(LocalDateTime.now());
-        payment.setUpdatedAt(LocalDateTime.now());
-        paymentsMapper.insert(payment);
     }
 
     @Override
@@ -278,5 +253,47 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders> impleme
         vo.setPayment(paymentsMapper.selectOne(new QueryWrapper<Payments>().eq("order_id", order.getId())));
 
         return vo;
+    }
+
+    @Override
+    @Transactional
+    public boolean updateOrder(Orders order) {
+        // 获取原订单信息
+        Orders existingOrder = this.getById(order.getId());
+        if (existingOrder == null) {
+            return false;
+        }
+        
+        // 检查订单状态，只有待支付的订单才能更新为已支付
+        if (!"PENDING".equals(existingOrder.getStatus())) {
+            return false;
+        }
+        
+        // 更新订单状态为已支付
+        existingOrder.setStatus("PAID");
+        existingOrder.setPaymentMethod(order.getPaymentMethod());
+        existingOrder.setPaymentTime(LocalDateTime.now());
+        existingOrder.setUpdatedAt(LocalDateTime.now());
+        
+        // 更新订单
+        boolean updateResult = this.updateById(existingOrder);
+        
+        if (updateResult) {
+            // 更新座位状态为已售出
+            List<OrderItems> items = orderItemsMapper.selectList(
+                    new QueryWrapper<OrderItems>().eq("order_id", order.getId()));
+            
+            if (!items.isEmpty()) {
+                // 更新 seats_sessions 表状态为 OCCUPIED
+                UpdateWrapper<SeatsSessions> soldWrapper = new UpdateWrapper<>();
+                soldWrapper.in("seat_id", items.stream().map(OrderItems::getSeatId).collect(Collectors.toList()))
+                        .eq("session_id", existingOrder.getSessionId())
+                        .eq("status", "RESERVED")  // 确保只更新之前被锁定的座位
+                        .set("status", "OCCUPIED");
+                seatsSessionsMapper.update(null, soldWrapper);
+            }
+        }
+        
+        return updateResult;
     }
 }

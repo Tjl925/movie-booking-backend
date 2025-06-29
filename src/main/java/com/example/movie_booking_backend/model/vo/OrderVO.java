@@ -27,9 +27,6 @@ public class OrderVO {
 
     @ApiModelProperty(value = "创建时间")
     private LocalDateTime createdAt;
-    
-    @ApiModelProperty(value = "支付截止时间")
-    private LocalDateTime paymentDeadline;
 
     @ApiModelProperty(value = "场次信息")
     private SessionVO session;

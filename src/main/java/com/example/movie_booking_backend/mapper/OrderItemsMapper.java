@@ -11,11 +11,9 @@ import java.util.List;
  * </p>
  *
  * @author tjl
- * @since 2025-06-23
+ * @since 2025-06-28
  */
 public interface OrderItemsMapper extends BaseMapper<OrderItems> {
-
-    List<Long> findSeatIdsBySessionId(Long sessionId);
 
     void insertBatchSomeColumn(List<OrderItems> orderItems);
 }

@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.util.Map;
 
 public interface FileService {
-    Map<String, String> upload(MultipartFile file) throws IOException;
     Map<String, String> uploadFile(MultipartFile file, String subDir) throws IOException;
     Map<String, String> uploadAvatar(MultipartFile file, String subDir, Long userId) throws IOException;
 }

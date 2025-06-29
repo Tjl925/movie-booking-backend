@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -20,7 +19,7 @@ import lombok.experimental.Accessors;
  * </p>
  *
  * @author tjl
- * @since 2025-06-29
+ * @since 2025-06-28
  */
 @Data
 @EqualsAndHashCode(callSuper = false)
@@ -57,7 +56,6 @@ public class SeatsSessions implements Serializable {
 
         @ApiModelProperty(value = "是否删除")
     @TableField("is_deleted")
-        @TableLogic
     private Boolean deleted;
 
 

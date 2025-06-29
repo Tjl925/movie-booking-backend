@@ -1,21 +1,23 @@
 package com.example.movie_booking_backend.web.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.movie_booking_backend.common.JsonResponse;
+import com.example.movie_booking_backend.common.exception.BusinessException;
 import com.example.movie_booking_backend.model.dto.SeatSelectionDTO;
 import com.example.movie_booking_backend.model.dto.SessionDTO;
-import com.example.movie_booking_backend.model.vo.SeatVO;
-import com.example.movie_booking_backend.model.vo.SessionInfoVO;
-import com.example.movie_booking_backend.model.vo.SeatsSessionsVO;
-import com.example.movie_booking_backend.model.vo.SessionVO;
+import com.example.movie_booking_backend.model.vo.*;
 import com.example.movie_booking_backend.service.IMovieSessionsService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
@@ -58,6 +60,24 @@ public class MovieSessionsController {
         return JsonResponse.successMessage("场次删除成功");
     }
 
+    /**
+     * 后台管理接口 - 检查场次时间冲突
+     */
+    @ApiOperation("检查场次时间冲突")
+    @GetMapping("/admin/check-conflict")
+    public JsonResponse<ConflictCheckVO> checkTimeConflict(
+            @ApiParam("影厅ID") @RequestParam("hallId") Long hallId,
+            @ApiParam("开始时间，格式：yyyy-MM-dd HH:mm:ss") @RequestParam("startTime") String startTimeStr,
+            @ApiParam("结束时间，格式：yyyy-MM-dd HH:mm:ss") @RequestParam("endTime") String endTimeStr,
+            @ApiParam("排除的场次ID（用于更新场次时）") @RequestParam(value = "excludeSessionId", required = false) Long excludeSessionId) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        LocalDateTime startTime = LocalDateTime.parse(startTimeStr, formatter);
+        LocalDateTime endTime = LocalDateTime.parse(endTimeStr, formatter);
+
+        ConflictCheckVO conflictCheckVO = movieSessionsService.checkTimeConflict(hallId, startTime, endTime, excludeSessionId);
+        return JsonResponse.success(conflictCheckVO);
+    }
+
     // ================= 前台公共接口 =================
 
     @ApiOperation("【前台】获取某电影某天的所有场次")
@@ -76,12 +96,12 @@ public class MovieSessionsController {
         return JsonResponse.success(sessionVO);
     }
 
-    @ApiOperation("【前台】获取某场次的座位图及状态")
-    @GetMapping("/public/{id}/seats")
-    public JsonResponse<List<SeatVO>> getSeatStatusForSession(@PathVariable Long id) {
-        List<SeatVO> seats = movieSessionsService.getSeatStatusForSession(id);
-        return JsonResponse.success(seats);
-    }
+//    @ApiOperation("【前台】获取某场次的座位图及状态")
+//    @GetMapping("/public/{id}/seats")
+//    public JsonResponse<List<SeatVO>> getSeatStatusForSession(@PathVariable Long id) {
+//        List<SeatVO> seats = movieSessionsService.getSeatStatusForSession(id);
+//        return JsonResponse.success(seats);
+//    }
 
     @ApiOperation("【前台】获取某电影的所有场次完整信息")
     @GetMapping("/public/movie/{movieId}/session-infos")
@@ -98,6 +118,30 @@ public class MovieSessionsController {
         return JsonResponse.success(seats);
     }
 
+//    @ApiOperation("【前台】更新单个座位状态")
+//    @PostMapping("/public/update-seat-status")
+//    public JsonResponse<String> updateSeatStatus(@RequestBody SeatSelectionDTO dto) {
+//        movieSessionsService.updateSeatStatus(dto);
+//        return JsonResponse.successMessage("座位状态更新成功");
+//    }
 
+    @ApiOperation("【后台】获取场次列表")
+    @GetMapping
+    public JsonResponse<Page<SessionVO>> getSessionList (
+            @RequestParam(value = "page", defaultValue = "1") Integer page,
+            @RequestParam(value = "size", defaultValue = "10") Integer size,
+            @RequestParam(value = "keyword", required = false) String keyword){
+        Page<SessionVO> pages = movieSessionsService.getSessionList(page, size, keyword);
+        return JsonResponse.success(pages);
+    }
+
+//    @ApiOperation("【前台】获取电影的场次列表")
+//    @GetMapping("/movie/{movieId}")
+//    public JsonResponse<List<SessionVO>> getMovieSessionList(
+//            @PathVariable Long movieId,
+//            @RequestParam(value = "status", required = false) String status) {
+//        List<SessionVO> sessions = movieSessionsService.getSessionsByMovieId(movieId, status);
+//        return JsonResponse.success(sessions);
+//    }
 }
 

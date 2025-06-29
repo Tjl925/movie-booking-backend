@@ -28,9 +28,9 @@ public interface IMoviesService extends IService<Movies> {
 
     Page<Movies> listMovies(Page<Movies> page, String title, String status);
 
-    String uploadPoster(MultipartFile file) throws IOException;
+    String uploadPoster(Long id, MultipartFile file) throws IOException;
 
-    String uploadVideo(MultipartFile file) throws IOException;
+    String uploadVideo(Long id, MultipartFile file) throws IOException;
 
     /**
      * 逻辑删除电影

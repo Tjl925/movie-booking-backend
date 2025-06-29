@@ -1,6 +1,7 @@
 package com.example.movie_booking_backend.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.movie_booking_backend.common.exception.BusinessException;
 import com.example.movie_booking_backend.mapper.*;
 import com.example.movie_booking_backend.model.domain.*;
@@ -45,6 +46,9 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
     private ISeatsService seatsService;
 
     @Autowired
+    private HallsServiceImpl hallsService;
+
+    @Autowired
     private OrderItemsMapper orderItemsMapper;
 
     @Autowired
@@ -63,7 +67,11 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
         LocalDateTime startTime = sessionDTO.getStartTime();
         LocalDateTime endTime = startTime.plusMinutes(movie.getDurationMinutes());
 
-        checkTimeConflict(sessionDTO.getHallId(), startTime, endTime, null);
+        // 检查时间冲突
+        ConflictCheckVO conflictCheck = checkTimeConflict(sessionDTO.getHallId(), startTime, endTime, null);
+        if (conflictCheck.getHasConflict()) {
+            throw new BusinessException(conflictCheck.getMessage());
+        }
 
         MovieSessions session = new MovieSessions();
         BeanUtils.copyProperties(sessionDTO, session);
@@ -91,7 +99,11 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
         LocalDateTime startTime = sessionDTO.getStartTime();
         LocalDateTime endTime = startTime.plusMinutes(movie.getDurationMinutes());
 
-        checkTimeConflict(sessionDTO.getHallId(), startTime, endTime, sessionId);
+        // 检查时间冲突
+        ConflictCheckVO conflictCheck = checkTimeConflict(sessionDTO.getHallId(), startTime, endTime, sessionId);
+        if (conflictCheck.getHasConflict()) {
+            throw new BusinessException(conflictCheck.getMessage());
+        }
 
         BeanUtils.copyProperties(sessionDTO, session);
         session.setId(sessionId);
@@ -180,8 +192,7 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
     }
 
 
-
-    private void checkTimeConflict(Long hallId, LocalDateTime startTime, LocalDateTime endTime, Long excludeSessionId) {
+    public ConflictCheckVO checkTimeConflict(Long hallId, LocalDateTime startTime, LocalDateTime endTime, Long excludeSessionId) {
         QueryWrapper<MovieSessions> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("hall_id", hallId)
                 .eq("is_deleted", false)
@@ -191,14 +202,34 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
             queryWrapper.ne("id", excludeSessionId);
         }
 
-        if (this.count(queryWrapper) > 0) {
-            throw new BusinessException("该时间段影厅已被占用");
+        List<MovieSessions> conflictSessions = this.list(queryWrapper);
+        if (conflictSessions.isEmpty()) {
+            return ConflictCheckVO.noConflict();
+        } else {
+            // 获取第一个冲突的场次
+            MovieSessions conflictSession = conflictSessions.get(0);
+            // 获取冲突场次的电影信息
+            Movies movie = moviesMapper.selectById(conflictSession.getMovieId());
+            String movieName = movie != null ? movie.getTitle() : "未知电影";
+
+            // 格式化时间
+            String startTimeStr = conflictSession.getSessionTime().toString().replace("T", " ");
+            String endTimeStr = conflictSession.getEndTime().toString().replace("T", " ");
+
+            return ConflictCheckVO.conflict(
+                    conflictSession.getId(),
+                    movieName,
+                    startTimeStr,
+                    endTimeStr
+            );
         }
     }
+
     @Override
     public List<SessionInfoVO> getSessionInfosByMovieId(Long movieId) {
         return movieSessionsMapper.findSessionInfoByMovieId(movieId);
     }
+
     private SessionVO mapToSessionVO(MovieSessions session) {
         SessionVO vo = new SessionVO();
         BeanUtils.copyProperties(session, vo);
@@ -208,8 +239,138 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
     }
 
 
-    @Autowired
-    private IHallsService hallsService; // 添加这个依赖
+//    @Transactional
+//    @Override
+//    public void updateSeatsStatus(List<SeatStatusUpdateDTO> updates) {
+//        for (SeatStatusUpdateDTO update : updates) {
+//            Seats seat = seatsService.getById(update.getId());
+//            if (seat != null) {
+//                seat.setStatus(update.getStatus());
+//                seat.setUpdatedAt(LocalDateTime.now());
+//                seatsService.updateById(seat);
+//            }
+//        }
+//    }
+
+//    @Override
+//    public SessionSeatsVO getSeatsForSelection(Long sessionId) {
+//        // 1. 验证场次是否存在并获取影厅ID
+//        MovieSessions session = this.getById(sessionId);
+//        if (session == null) {
+//            throw new BusinessException("场次不存在");
+//        }
+//
+//        // 2. 获取影厅信息
+//        Halls hall = hallsMapper.selectById(session.getHallId());
+//        if (hall == null) {
+//            throw new BusinessException("影厅信息不存在");
+//        }
+//
+//        // 3. 获取影厅所有有效座位
+//        List<Seats> allSeatsInHall = seatsService.list(
+//                new QueryWrapper<Seats>()
+//                        .eq("hall_id", session.getHallId())
+//                        .eq("is_deleted", false)
+//        );
+//        // 5. 转换并设置座位状态（完全手动映射）
+//        List<SeatVO> seatVOs = allSeatsInHall.stream()
+//                .map(seat -> {
+//                    SeatVO seatVO = new SeatVO();
+//                    // 手动映射所有字段
+//                    seatVO.setId(seat.getId());
+//                    seatVO.setRowNumber(seat.getSeatRow());     // 关键修改点
+//                    seatVO.setColumnNumber(seat.getSeatColumn()); // 关键修改点
+//
+//                    // 状态设置
+//                    switch (seat.getStatus()) {
+//                        case "RESERVED":
+//                            seatVO.setStatus("RESERVED");
+//                            break;
+//                        case "MAINTENANCE":
+//                            seatVO.setStatus("MAINTENANCE");
+//                            break;
+//                        case "OCCUPIED":
+//                            seatVO.setStatus("OCCUPIED");
+//                            break;
+//                        default:
+//                            seatVO.setStatus("AVAILABLE");
+//                    }
+//                    return seatVO;
+//                })
+//                .collect(Collectors.toList());
+//
+//        // 6. 封装返回结果
+//        SessionSeatsVO result = new SessionSeatsVO();
+//        result.setSeats(seatVOs);
+//        result.setTotalSeats(hall.getTotalSeats());
+//        result.setTotalRows(hall.getTotalRows());
+//        result.setTotalColumns(hall.getTotalColumns());
+//
+//        return result;
+//    }
+
+//    @Transactional
+//    @Override
+//    public void updateSeatStatus(SeatSelectionDTO dto) {
+//        if (dto.getSeatId() == null || dto.getStatus() == null) {
+//            throw new BusinessException("座位ID和状态不能为空");
+//        }
+//
+//        Seats seat = seatsService.getById(dto.getSeatId());
+//        if (seat == null) {
+//            throw new BusinessException("座位不存在");
+//        }
+//
+//        // 验证状态转换是否合法
+//        if ("RESERVED".equals(dto.getStatus())) {
+//            if (!"AVAILABLE".equals(seat.getStatus())) {
+//                throw new BusinessException("只能预定可用座位");
+//            }
+//        }
+//
+//        seat.setStatus(dto.getStatus());
+//        seat.setUpdatedAt(LocalDateTime.now());
+//        seatsService.updateById(seat);
+//    }
+
+    @Override
+    public Page<SessionVO> getSessionList(Integer page, Integer size, String keyword) {
+        // 构建查询条件
+        QueryWrapper<MovieSessions> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("is_deleted", false);
+
+        // 如果有关键字，则搜索电影标题或影厅名称
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            // 这里需要使用子查询或连接查询，简化起见，我们先获取所有符合条件的场次ID
+            List<Long> sessionIds = movieSessionsMapper.findSessionIdsByKeyword(keyword);
+            if (!sessionIds.isEmpty()) {
+                queryWrapper.in("id", sessionIds);
+            } else {
+                // 如果没有匹配的结果，返回空列表
+                return new Page<>();
+            }
+        }
+
+        // 按开始时间降序排序
+        queryWrapper.orderByDesc("session_time");
+
+        // 分页查询
+        Page<MovieSessions> pageParam = new Page<>(page, size);
+        Page<MovieSessions> pageResult = this.page(pageParam, queryWrapper);
+
+        // 转换为VO对象
+        List<SessionVO> sessionVOs = pageResult.getRecords().stream()
+                .map(this::mapToSessionVO)
+                .collect(Collectors.toList());
+
+        Page<SessionVO> voPage = new Page<>();
+        voPage.setRecords(sessionVOs);
+        voPage.setTotal(pageResult.getTotal());
+        voPage.setSize(pageResult.getSize());
+        voPage.setCurrent(pageResult.getCurrent());
+        voPage.setPages(pageResult.getPages());
+        return voPage;
+    }
 
     @Override
     public SeatsSessionsVO getSeatsForSelection(Long sessionId) {
@@ -252,7 +413,6 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
                             .orElse(null);
 
                     SeatSessionVO vo = new SeatSessionVO();
-                    vo.setId(seat.getId()); // 或者 sessionRecord.getId() 根据需求决定
                     vo.setSeatId(seat.getId());
                     vo.setSessionId(sessionId);
                     vo.setRowNumber(seat.getSeatRow());
