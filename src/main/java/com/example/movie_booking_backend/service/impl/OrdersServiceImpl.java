@@ -167,6 +167,11 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders> impleme
     public Orders getOrders(Long orderId) {
         return this.getById(orderId);
     }
+    
+    @Override
+    public Orders getOrderByOrderNumber(String orderNumber) {
+        return this.getOne(new QueryWrapper<Orders>().eq("order_number", orderNumber));
+    }
 
     @Override
     public OrderVO getOrderDetails(Long orderId, Long userId) {
@@ -178,7 +183,22 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders> impleme
 
     @Override
     public Page<OrderVO> getUserOrders(Page<Orders> page, Long userId) {
-        Page<Orders> orderPage = this.page(page, new QueryWrapper<Orders>().eq("user_id", userId).orderByDesc("created_at"));
+        Page<Orders> orderPage = this.page(page, new QueryWrapper<Orders>().eq("user_id", userId).ne("status", "CANCELLED").orderByDesc("created_at"));
+
+        Page<OrderVO> voPage = new Page<>();
+        BeanUtils.copyProperties(orderPage, voPage);
+
+        List<OrderVO> orderVOs = orderPage.getRecords().stream()
+                .map(this::buildOrderVO)
+                .collect(Collectors.toList());
+        voPage.setRecords(orderVOs);
+
+        return voPage;
+    }
+    
+    @Override
+    public Page<OrderVO> getAllOrders(Page<Orders> page) {
+        Page<Orders> orderPage = this.page(page, new QueryWrapper<Orders>().eq("is_deleted", false).orderByDesc("created_at"));
 
         Page<OrderVO> voPage = new Page<>();
         BeanUtils.copyProperties(orderPage, voPage);
@@ -203,6 +223,23 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders> impleme
         releaseSeatsForOrder(order);
 
         order.setStatus("CANCELLED");
+        order.setUpdatedAt(LocalDateTime.now());
+        this.updateById(order);
+    }
+    
+    @Override
+    @Transactional
+    public void deleteOrder(Long orderId) {
+        Orders order = this.getById(orderId);
+        if (order == null) throw new BusinessException("订单不存在");
+        
+        // 如果订单状态为待支付，需要释放座位
+        if ("PENDING".equals(order.getStatus())) {
+            releaseSeatsForOrder(order);
+        }
+        
+        // 逻辑删除订单
+        order.setDeleted(true);
         order.setUpdatedAt(LocalDateTime.now());
         this.updateById(order);
     }
@@ -242,6 +279,7 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders> impleme
     private OrderVO buildOrderVO(Orders order) {
         OrderVO vo = new OrderVO();
         BeanUtils.copyProperties(order, vo);
+        vo.setTotalAmount(order.getTotalAmount().doubleValue());
 
         List<OrderItems> items = orderItemsMapper.selectList(new QueryWrapper<OrderItems>().eq("order_id", order.getId()));
         vo.setOrderItems(items);
@@ -250,7 +288,7 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders> impleme
             vo.setSession(movieSessionsService.getSessionDetails(order.getSessionId()));
         }
 
-        vo.setPayment(paymentsMapper.selectOne(new QueryWrapper<Payments>().eq("order_id", order.getId())));
+        vo.setPayment(paymentsMapper.selectOne(new QueryWrapper<Payments>().eq("order_id", order.getId()).eq("payment_status", order.getStatus())));
 
         return vo;
     }

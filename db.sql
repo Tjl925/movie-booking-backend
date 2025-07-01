@@ -10,6 +10,7 @@ DROP TABLE IF EXISTS order_items;
 DROP TABLE IF EXISTS orders;
 DROP TABLE IF EXISTS movie_sessions;
 DROP TABLE IF EXISTS seats;
+DROP TABLE IF EXISTS seats_sessions;
 DROP TABLE IF EXISTS halls;
 DROP TABLE IF EXISTS movies;
 DROP TABLE IF EXISTS role_permissions;
@@ -930,6 +931,15 @@ WHERE m.status = 'NOW_SHOWING'
   AND h.status = 'ACTIVE'
 ORDER BY day_offset, hour_offset, m.id, h.id;
 
+-- 为每个场次的每个座位生成座位场次关联数据
+INSERT INTO seats_sessions (seat_id, session_id, status)
+SELECT s.id, ms.id, 'AVAILABLE'
+FROM seats s
+         CROSS JOIN movie_sessions ms
+WHERE s.hall_id = ms.hall_id
+  AND s.is_deleted = 0
+  AND ms.is_deleted = 0;
+
 -- ==================== 存储过程 ====================
 
 -- 创建生成订单号的存储过程
@@ -1053,12 +1063,3 @@ SELECT '- 场次管理（电影场次、时间安排）' as module3;
 SELECT '- 订单管理（订单、订单项、支付）' as module4;
 SELECT '- 操作日志（系统操作记录）' as module5;
 SELECT '- 视图和存储过程（数据查询和业务逻辑）' as module6;
-
--- 为每个场次的每个座位生成座位场次关联数据
-INSERT INTO seats_sessions (seat_id, session_id, status)
-SELECT s.id, ms.id, 'AVAILABLE'
-FROM seats s
-CROSS JOIN movie_sessions ms
-WHERE s.hall_id = ms.hall_id
-  AND s.is_deleted = 0
-  AND ms.is_deleted = 0;

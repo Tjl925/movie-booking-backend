@@ -14,14 +14,10 @@ import com.example.movie_booking_backend.service.IHallsService;
 import com.example.movie_booking_backend.service.IMovieSessionsService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.movie_booking_backend.service.ISeatsService;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

@@ -7,6 +7,7 @@
         <id column="id" property="id" />
         <result column="username" property="username" />
         <result column="password" property="password" />
+        <result column="open_id" property="openId" />
         <result column="email" property="email" />
         <result column="phone" property="phone" />
         <result column="avatar" property="avatar" />
@@ -21,28 +22,28 @@
 
     <!-- 根据用户名查找未删除的用户 -->
     <select id="selectByUsernameAndIsDeletedFalse" resultMap="BaseResultMap">
-        SELECT id, username, password, email, phone, avatar, role_id, status, last_login, login_count, created_at, updated_at, is_deleted
+        SELECT id, username, password, open_id, email, phone, avatar, role_id, status, last_login, login_count, created_at, updated_at, is_deleted
         FROM users
         WHERE username = #{username} AND is_deleted = 0
     </select>
 
     <!-- 根据邮箱查找未删除的用户 -->
     <select id="selectByEmailAndIsDeletedFalse" resultMap="BaseResultMap">
-        SELECT id, username, password, email, phone, avatar, role_id, status, last_login, login_count, created_at, updated_at, is_deleted
+        SELECT id, username, password, open_id, email, phone, avatar, role_id, status, last_login, login_count, created_at, updated_at, is_deleted
         FROM users
         WHERE email = #{email} AND is_deleted = 0
     </select>
 
     <!-- 根据ID查找未删除的用户 -->
     <select id="selectByIdAndIsDeletedFalse" resultMap="BaseResultMap">
-        SELECT id, username, password, email, phone, avatar, role_id, status, last_login, login_count, created_at, updated_at, is_deleted
+        SELECT id, username, password, open_id, email, phone, avatar, role_id, status, last_login, login_count, created_at, updated_at, is_deleted
         FROM users
         WHERE id = #{id} AND is_deleted = 0
     </select>
 
     <!-- 根据用户名或邮箱查找未删除的用户 -->
     <select id="selectByUsernameOrEmailAndIsDeletedFalse" resultMap="BaseResultMap">
-        SELECT id, username, password, email, phone, avatar, role_id, status, last_login, login_count, created_at, updated_at, is_deleted
+        SELECT id, username, password, open_id, email, phone, avatar, role_id, status, last_login, login_count, created_at, updated_at, is_deleted
         FROM users
         WHERE (username = #{username} OR email = #{email}) AND is_deleted = 0
     </select>
@@ -50,7 +51,7 @@
     <!-- 根据分组ID查询用户列表（分页） -->
     <select id="selectUsersByGroupId" resultMap="BaseResultMap">
         SELECT
-        u.id, u.username, u.password, u.email, u.phone, u.avatar, u.role_id, u.status, u.last_login, u.login_count, u.created_at, u.updated_at, u.is_deleted
+        u.id, u.username, u.password, u.open_id, u.email, u.phone, u.avatar, u.role_id, u.status, u.last_login, u.login_count, u.created_at, u.updated_at, u.is_deleted
         FROM users u
         JOIN user_group_relations r ON u.id = r.user_id
         WHERE r.group_id = #{groupId} AND u.is_deleted = 0 AND r.is_deleted = 0

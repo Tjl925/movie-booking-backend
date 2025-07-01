@@ -121,4 +121,5 @@ public class Movies implements Serializable {
     @ApiModelProperty(value = "票房数")
     @TableField("box_office")
     private Long boxOffice;
+
 }

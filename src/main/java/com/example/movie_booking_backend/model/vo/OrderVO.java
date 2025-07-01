@@ -16,8 +16,14 @@ public class OrderVO {
     @ApiModelProperty(value = "订单ID")
     private Long id;
 
+    @ApiModelProperty(value = "订单号")
+    private String orderNumber;
+
     @ApiModelProperty(value = "用户ID")
     private Long userId;
+
+    @ApiModelProperty(value = "票数")
+    private int ticketCount;
 
     @ApiModelProperty(value = "总金额")
     private Double totalAmount;

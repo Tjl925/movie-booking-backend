@@ -29,5 +29,4 @@ public class SessionDTO {
     private LocalDateTime sessionTime;
 
     // 结束时间将根据电影时长自动计算，无需传入
-
 }

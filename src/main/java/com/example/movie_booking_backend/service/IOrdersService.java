@@ -24,12 +24,21 @@ public interface IOrdersService extends IService<Orders> {
     OrderVO getOrderDetails(Long orderId, Long userId);
 
     Page<OrderVO> getUserOrders(Page<Orders> page, Long userId);
+    
+    // 管理员获取所有订单
+    Page<OrderVO> getAllOrders(Page<Orders> page);
 
     void cancelOrder(Long orderId, Long userId);
+    
+    // 管理员删除订单
+    void deleteOrder(Long orderId);
 
     // 处理超时的订单
     void handleExpiredOrders();
     
     // 更新订单信息（支付成功后调用）
     boolean updateOrder(Orders order);
+    
+    // 根据订单号查询订单
+    Orders getOrderByOrderNumber(String orderNumber);
 }

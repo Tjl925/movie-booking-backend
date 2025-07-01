@@ -67,6 +67,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/movies/public/**").permitAll()
                         .requestMatchers("/api/sessions/public/**").permitAll()
                         .requestMatchers("/api/users/**").permitAll()
+                        .requestMatchers("/api/alipay/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v2/api-docs", "/swagger-resources/**").permitAll()
                         .requestMatchers("/error").permitAll()
