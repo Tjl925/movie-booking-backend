@@ -118,5 +118,7 @@ public class Movies implements Serializable {
     @TableField("is_deleted")
     private Boolean deleted;
 
-
+    @ApiModelProperty(value = "票房数")
+    @TableField("box_office")
+    private Long boxOffice;
 }

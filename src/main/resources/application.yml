@@ -1,9 +1,9 @@
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/movie_booking_system?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
-    username: root
-    password: '041024'
+    url: jdbc:mysql://192.168.200.28:3306/movie_booking_system?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+    username: YY
+    password: '123456'
   mvc:
     format:
       date: yyyy-MM-dd
@@ -44,3 +44,8 @@ logging:
   level:
     com.example.movie_booking_backend: debug
     org.springframework.security: debug
+qq:
+  auth:
+    url: https://qq.wch666.com/api/qq.php      # 心月互联的QQ登录地址
+    user-info-url: https://qq.wch666.com/api/get_user_info.php  # 获取用户信息的地址
+    token: 4563f8b4896152de920bf22ec0a52a05

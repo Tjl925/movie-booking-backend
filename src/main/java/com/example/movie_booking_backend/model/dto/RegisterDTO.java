@@ -34,4 +34,7 @@ public class RegisterDTO {
     @Pattern(regexp = "^1[3-9]\\d{9}$", message = "手机号格式不正确")
     @ApiModelProperty(value = "手机号", example = "13800138000")
     private String phone;
+
+    @ApiModelProperty(value = "QQ的openId", example = "QQ_OPEN_ID")
+    private String openId;
 } 

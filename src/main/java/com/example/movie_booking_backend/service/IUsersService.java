@@ -3,10 +3,8 @@ package com.example.movie_booking_backend.service;
 import com.example.movie_booking_backend.model.domain.Users;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.example.movie_booking_backend.model.dto.ChangePasswordDTO;
-import com.example.movie_booking_backend.model.dto.UserCreationDTO;
-import com.example.movie_booking_backend.model.dto.UserProfileUpdateDTO;
-import com.example.movie_booking_backend.model.dto.UserUpdateDTO;
+import com.example.movie_booking_backend.model.dto.*;
+import com.example.movie_booking_backend.model.vo.AuthResultVO;
 import com.example.movie_booking_backend.model.vo.UserVO;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -35,4 +33,7 @@ public interface IUsersService extends IService<Users> {
 
     String uploadAvatar(Long id, MultipartFile file);
     void changePassword(ChangePasswordDTO changePasswordDTO);
+
+    AuthResultVO checkQQBind(String openId, String nickname, String avatar);
+    AuthResultVO bindQQAccount(BindRequestDTO request);
 }

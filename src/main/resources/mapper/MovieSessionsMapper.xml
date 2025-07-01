@@ -17,7 +17,7 @@
     <select id="findSessionInfoByMovieId" resultType="com.example.movie_booking_backend.model.vo.SessionInfoVO">
         SELECT
             ms.id AS sessionId,
-            ms.session_time AS startTime,
+            ms.session_time AS sessionTime,
             ms.end_time AS endTime,
             h.hall_name AS hallName,
             h.hall_type AS hallType,
@@ -56,4 +56,5 @@
         AND m.is_deleted = false
         AND h.is_deleted = false
     </select>
+
 </mapper>

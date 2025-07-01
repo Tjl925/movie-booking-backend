@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 public class SessionInfoVO {
     // 场次基本信息
     private Long sessionId;
-    private LocalDateTime startTime;
+    private LocalDateTime sessionTime;
     private LocalDateTime endTime;
 
     // 影厅信息
