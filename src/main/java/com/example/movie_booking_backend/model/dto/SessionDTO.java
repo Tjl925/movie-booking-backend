@@ -1,5 +1,6 @@
 package com.example.movie_booking_backend.model.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import jakarta.validation.constraints.Future;
@@ -23,13 +24,10 @@ public class SessionDTO {
 
     @NotNull(message = "开始时间不能为空")
     @Future(message = "开始时间必须是未来的时间")
-    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @ApiModelProperty(value = "开始时间 (yyyy-MM-dd HH:mm:ss)", required = true)
-    private LocalDateTime startTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime sessionTime;
 
     // 结束时间将根据电影时长自动计算，无需传入
 
-    @NotNull(message = "票价不能为空")
-    @ApiModelProperty(value = "票价", required = true)
-    private Double price;
 }

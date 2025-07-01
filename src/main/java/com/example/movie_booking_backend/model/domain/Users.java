@@ -10,8 +10,10 @@ import java.time.LocalDateTime;
 
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
+import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
 /**
@@ -26,6 +28,8 @@ import lombok.experimental.Accessors;
 @EqualsAndHashCode(callSuper = false)
 @Accessors(chain = true)
 @TableName("users")
+
+
 @ApiModel(value = "Users对象", description = "用户表")
 public class Users implements Serializable {
 
@@ -70,6 +74,10 @@ public class Users implements Serializable {
     @ApiModelProperty(value = "登录次数")
     @TableField("login_count")
     private Integer loginCount;
+
+    @ApiModelProperty(value = "QQid")
+    @TableField("open_id")
+    private String openId;
 
     @ApiModelProperty(value = "创建时间")
     @TableField("created_at")

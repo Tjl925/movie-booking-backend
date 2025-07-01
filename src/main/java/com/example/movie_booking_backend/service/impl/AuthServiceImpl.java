@@ -1,5 +1,6 @@
 package com.example.movie_booking_backend.service.impl;
 
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.example.movie_booking_backend.common.exception.BusinessException;
 import com.example.movie_booking_backend.common.utils.JwtUtils;
 import com.example.movie_booking_backend.mapper.RolesMapper;
@@ -84,7 +85,7 @@ public class AuthServiceImpl implements IAuthService {
 
     @Override
     @Transactional
-    public void register(RegisterDTO registerDTO) {
+    public LoginResponseVO register(RegisterDTO registerDTO) {
         // 验证密码一致性
         if (!registerDTO.getPassword().equals(registerDTO.getConfirmPassword())) {
             throw new BusinessException("两次输入的密码不一致");
@@ -125,7 +126,14 @@ public class AuthServiceImpl implements IAuthService {
         if (userRole == null) {
             throw new BusinessException("系统错误：用户角色不存在");
         }
-
+        if (StringUtils.isNotBlank(registerDTO.getOpenId())) {
+            queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("open_id", registerDTO.getOpenId())
+                    .eq("is_deleted", false);
+            if (usersMapper.selectCount(queryWrapper) > 0) {
+                throw new BusinessException("该QQ账号已绑定其他用户");
+            }
+        }
         // 创建用户
         Users user = new Users();
         user.setUsername(registerDTO.getUsername());
@@ -134,12 +142,29 @@ public class AuthServiceImpl implements IAuthService {
         user.setPhone(registerDTO.getPhone());
         user.setRoleId(userRole.getId());
         user.setStatus("ACTIVE");
+        if (StringUtils.isNotBlank(registerDTO.getOpenId())) {
+            user.setOpenId(registerDTO.getOpenId());
+        }
         user.setLoginCount(0);
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
         user.setDeleted(false);
-
         usersMapper.insert(user);
+        String token = jwtUtils.generateToken(user.getUsername(), user.getId(), user.getRoleId().toString());
+
+        // 构建响应
+        LoginResponseVO response = new LoginResponseVO();
+        response.setToken(token);
+        response.setExpiresIn(86400L); // 24小时
+
+        UserVO userVO = new UserVO();
+        BeanUtils.copyProperties(user, userVO);
+        userVO.setRoleName(user.getRoleId().toString());
+        response.setUserInfo(userVO);
+
+        return response;
+
+
     }
 
     @Override

@@ -109,4 +109,8 @@ public interface IMoviesService extends IService<Movies> {
     List<Movies> getTop10Movies();
 
     Page<Movies> searchMovies(Page<Movies> page, String keyword);
+
+    List<Movies> getRecommendedMovies(Long movieId, Integer limit);
+
+    List<Movies> getBestBoxOfficeMovies();
 }

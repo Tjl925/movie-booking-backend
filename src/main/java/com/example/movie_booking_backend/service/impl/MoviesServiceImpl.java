@@ -22,6 +22,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * <p>
@@ -228,6 +229,13 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
     }
 
     @Override
+    public List<Movies> getBestBoxOfficeMovies() {
+        QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
+        queryWrapper.orderByDesc("box_office")  // 按票房降序
+                .last("LIMIT 10");      // 限制10条
+        return moviesMapper.selectList(queryWrapper);
+    }
+    @Override
     public Page<Movies> searchMovies(Page<Movies> page, String keyword) {
         QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("is_deleted", false);
@@ -244,6 +252,101 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
                 .orderByDesc("rating");
 
         return this.page(page, queryWrapper);
+    }
+
+    @Override
+    public List<Movies> getRecommendedMovies(Long movieId, Integer limit) {
+        // 1. 获取当前电影
+        Movies currentMovie = this.getById(movieId);
+        if (currentMovie == null || currentMovie.getDeleted()) {
+            throw new BusinessException("电影不存在或已下架");
+        }
+
+        // 2. 获取所有候选电影（排除当前电影和已下架电影）
+        QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
+        queryWrapper.ne("id", movieId)
+                .eq("is_deleted", false)
+                .eq("status", "NOW_SHOWING"); // 只推荐正在上映的电影
+        List<Movies> allMovies = this.list(queryWrapper);
+
+        // 3. 计算每部电影的推荐得分
+        List<Movies> recommendedMovies = allMovies.stream()
+                .map(movie -> new MovieScore(movie, calculateMovieScore(currentMovie, movie)))
+                .sorted(Comparator.comparingDouble(MovieScore::getScore).reversed())
+                .limit(limit)
+                .map(MovieScore::getMovie)
+                .collect(Collectors.toList());
+
+        return recommendedMovies;
+    }
+
+
+    // 辅助类：用于存储电影和得分的关联
+    private static class MovieScore {
+        private final Movies movie;
+        private final double score;
+
+        public MovieScore(Movies movie, double score) {
+            this.movie = movie;
+            this.score = score;
+        }
+
+        public Movies getMovie() {
+            return movie;
+        }
+
+        public double getScore() {
+            return score;
+        }
+    }
+
+    /**
+     * 计算电影推荐得分
+     * 权重分配：题材50%，评分30%，地区20%
+     */
+    private double calculateMovieScore(Movies current, Movies candidate) {
+        // 1. 题材匹配度（50%）
+        double genreScore = calculateGenreScore(current.getGenre(), candidate.getGenre()) * 0.5;
+
+        // 2. 评分相似度（30%）
+        double ratingScore = calculateRatingScore(
+                current.getRating().doubleValue(),
+                candidate.getRating().doubleValue()) * 0.3;
+
+        // 3. 地区匹配（20%）
+        double countryScore = current.getCountry().equals(candidate.getCountry()) ? 0.2 : 0;
+
+        return genreScore + ratingScore + countryScore;
+    }
+
+    /**
+     * 计算题材匹配度
+     */
+    private double calculateGenreScore(String currentGenres, String candidateGenres) {
+        if (currentGenres == null || candidateGenres == null) return 0;
+
+        Set<String> currentSet = Arrays.stream(currentGenres.split(","))
+                .map(String::trim)
+                .collect(Collectors.toSet());
+
+        Set<String> candidateSet = Arrays.stream(candidateGenres.split(","))
+                .map(String::trim)
+                .collect(Collectors.toSet());
+
+        // 计算共同题材数量占当前电影题材数量的比例
+        long commonCount = currentSet.stream()
+                .filter(candidateSet::contains)
+                .count();
+
+        return currentSet.isEmpty() ? 0 : (double) commonCount / currentSet.size();
+    }
+
+    /**
+     * 计算评分相似度（使用高斯函数）
+     */
+    private double calculateRatingScore(double currentRating, double candidateRating) {
+        double diff = Math.abs(currentRating - candidateRating);
+        return Math.exp(-(diff * diff) / 2); // 标准差σ=1
     }
 
     @Override
@@ -270,25 +373,41 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
 
     @Override
     public List<Map<String, Object>> getAllGenresWithCount() {
-        // 查询所有未删除的电影
+        // 1. 查询所有未删除的电影及其类型
         QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("is_deleted", false);
-        queryWrapper.select("genre", "COUNT(*) as count");
-        queryWrapper.groupBy("genre");
+        queryWrapper.select("id", "genre"); // 只查询ID和genre字段
 
-        // 使用Mapper执行自定义SQL查询
-        List<Map<String, Object>> result = this.baseMapper.selectMaps(queryWrapper);
+        List<Movies> movies = this.baseMapper.selectList(queryWrapper);
 
-        // 处理结果，确保返回格式一致
-        List<Map<String, Object>> genreList = new ArrayList<>();
-        for (Map<String, Object> item : result) {
-            Map<String, Object> genreMap = new HashMap<>();
-            genreMap.put("name", item.get("genre"));
-            genreMap.put("movieCount", item.get("count"));
-            genreList.add(genreMap);
+        Map<String, Integer> genreCountMap = new HashMap<>();
+
+        //  处理每部电影的类型
+        for (Movies movie : movies) {
+            if (movie.getGenre() != null && !movie.getGenre().isEmpty()) {
+                String[] genres = movie.getGenre().split(",");
+
+                // 统计每种类型
+                for (String genre : genres) {
+                    String trimmedGenre = genre.trim();
+                    if (!trimmedGenre.isEmpty()) {
+                        genreCountMap.put(trimmedGenre,
+                                genreCountMap.getOrDefault(trimmedGenre, 0) + 1);
+                    }
+                }
+            }
         }
 
-        return genreList;
+        // 4. 转换为返回格式
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : genreCountMap.entrySet()) {
+            Map<String, Object> genreMap = new HashMap<>();
+            genreMap.put("name", entry.getKey());
+            genreMap.put("movieCount", entry.getValue());
+            result.add(genreMap);
+        }
+
+        return result;
     }
 
     @Override
@@ -297,9 +416,8 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
         queryWrapper.eq("is_deleted", false);
 
         if (genre != null && !genre.isEmpty()) {
-            queryWrapper.eq("genre", genre);
+            queryWrapper.like("genre", genre);
         }
-
         return this.page(page, queryWrapper);
     }
 
@@ -407,7 +525,7 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
 
         // 查询符合条件的电影
         QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("genre", oldGenre).eq("is_deleted", false);
+        queryWrapper.like("genre", oldGenre).eq("is_deleted", false);
         List<Movies> moviesList = this.list(queryWrapper);
 
         if (moviesList.isEmpty()) {
@@ -416,7 +534,9 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
 
         // 批量更新电影类型
         for (Movies movie : moviesList) {
-            movie.setGenre(newGenre);
+             String str=movie.getGenre();
+            String str1=str.replace(oldGenre,newGenre);
+            movie.setGenre(str1);
             movie.setUpdatedAt(LocalDateTime.now());
         }
 

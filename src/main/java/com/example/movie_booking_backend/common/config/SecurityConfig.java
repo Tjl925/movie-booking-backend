@@ -61,6 +61,8 @@ public class SecurityConfig {
                 .addFilterBefore(new JwtAuthFilter(), org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(authz -> authz
                         // 公开接口
+                        .requestMatchers("/api/qq/callback").permitAll()
+                        .requestMatchers("/api/bind-qq").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/movies/public/**").permitAll()
                         .requestMatchers("/api/sessions/public/**").permitAll()

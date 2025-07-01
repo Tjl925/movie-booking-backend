@@ -203,6 +203,11 @@ public class MoviesController {
         return JsonResponse.success(moviesService.getTop10Movies());
     }
 
+    @GetMapping("public/boxOffice")
+    public JsonResponse<List<Movies>> getBestBoxOfficeMovies(){
+        return JsonResponse.success(moviesService.getBestBoxOfficeMovies());
+    }
+
     @ApiOperation("【前台】搜索电影")
     @GetMapping("/public/search")
     public JsonResponse<Page<Movies>> getSearchList(
@@ -211,6 +216,14 @@ public class MoviesController {
             @ApiParam("搜索关键词") @RequestParam String keyword) {
         Page<Movies> page = new Page<>(current, size);
         return JsonResponse.success(moviesService.searchMovies(page, keyword));
+    }
+
+    @ApiOperation("【前台】获取相似电影推荐")
+    @GetMapping("/public/{movieId}/recommendations")
+    public JsonResponse<List<Movies>> getMovieRecommendations(
+            @PathVariable Long movieId,
+            @ApiParam("返回数量") @RequestParam(defaultValue = "5") Integer limit) {
+        return JsonResponse.success(moviesService.getRecommendedMovies(movieId, limit));
     }
 }
 

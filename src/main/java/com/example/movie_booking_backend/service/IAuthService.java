@@ -14,7 +14,7 @@ public interface IAuthService {
     /**
      * 用户注册
      */
-    void register(RegisterDTO registerDTO);
+    LoginResponseVO register(RegisterDTO registerDTO);
 
     /**
      * 用户登出

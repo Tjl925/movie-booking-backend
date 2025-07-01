@@ -29,9 +29,9 @@ public class AuthController {
 
     @ApiOperation("用户注册")
     @PostMapping("/register")
-    public JsonResponse<String> register(@Valid @RequestBody RegisterDTO registerDTO) {
-        authService.register(registerDTO);
-        return JsonResponse.successMessage("注册成功");
+    public JsonResponse<LoginResponseVO> register(@Valid @RequestBody RegisterDTO registerDTO) {
+        LoginResponseVO response = authService.register(registerDTO);
+        return JsonResponse.success(response, "注册成功");
     }
 
     @ApiOperation("用户登出")

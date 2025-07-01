@@ -2,6 +2,7 @@ package com.example.movie_booking_backend.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.movie_booking_backend.common.JsonResponse;
 import com.example.movie_booking_backend.common.exception.BusinessException;
 import com.example.movie_booking_backend.mapper.*;
 import com.example.movie_booking_backend.model.domain.*;
@@ -13,13 +14,18 @@ import com.example.movie_booking_backend.service.IHallsService;
 import com.example.movie_booking_backend.service.IMovieSessionsService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.movie_booking_backend.service.ISeatsService;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +51,7 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
     @Autowired
     private ISeatsService seatsService;
 
+
     @Autowired
     private HallsServiceImpl hallsService;
 
@@ -64,7 +71,7 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
         Halls hall = hallsMapper.selectById(sessionDTO.getHallId());
         if (hall == null || hall.getDeleted()) throw new BusinessException("影厅不存在");
 
-        LocalDateTime startTime = sessionDTO.getStartTime();
+        LocalDateTime startTime = sessionDTO.getSessionTime();
         LocalDateTime endTime = startTime.plusMinutes(movie.getDurationMinutes());
 
         // 检查时间冲突
@@ -96,7 +103,7 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
         Halls hall = hallsMapper.selectById(sessionDTO.getHallId());
         if (hall == null || hall.getDeleted()) throw new BusinessException("影厅不存在");
 
-        LocalDateTime startTime = sessionDTO.getStartTime();
+        LocalDateTime startTime = sessionDTO.getSessionTime();
         LocalDateTime endTime = startTime.plusMinutes(movie.getDurationMinutes());
 
         // 检查时间冲突
@@ -138,9 +145,9 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
         QueryWrapper<MovieSessions> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("movie_id", movieId)
                 .eq("is_deleted", false)
-                .ge("start_time", startOfDay)
-                .lt("start_time", endOfDay)
-                .orderByAsc("start_time");
+                .ge("session_time", startOfDay)
+                .lt("session_time", endOfDay)
+                .orderByAsc("session_time");
 
         List<MovieSessions> sessions = this.list(queryWrapper);
         return sessions.stream().map(this::mapToSessionVO).collect(Collectors.toList());
@@ -192,37 +199,44 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
     }
 
 
+    @Override
     public ConflictCheckVO checkTimeConflict(Long hallId, LocalDateTime startTime, LocalDateTime endTime, Long excludeSessionId) {
+        ConflictCheckVO result = new ConflictCheckVO();
+        result.setHasConflict(false);
+
+        // 查询该影厅在时间范围内的所有场次（排除自身）
         QueryWrapper<MovieSessions> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("hall_id", hallId)
                 .eq("is_deleted", false)
-                .and(qw -> qw.lt("start_time", endTime).gt("end_time", startTime));
+                .and(wrapper -> wrapper
+                        .between("session_time", startTime, endTime)
+                        .or()
+                        .between("end_time", startTime, endTime)
+                        .or()
+                        .le("session_time", startTime)
+                        .ge("end_time", endTime)
+                );
 
         if (excludeSessionId != null) {
             queryWrapper.ne("id", excludeSessionId);
         }
 
-        List<MovieSessions> conflictSessions = this.list(queryWrapper);
-        if (conflictSessions.isEmpty()) {
-            return ConflictCheckVO.noConflict();
-        } else {
-            // 获取第一个冲突的场次
-            MovieSessions conflictSession = conflictSessions.get(0);
-            // 获取冲突场次的电影信息
-            Movies movie = moviesMapper.selectById(conflictSession.getMovieId());
-            String movieName = movie != null ? movie.getTitle() : "未知电影";
+        List<MovieSessions> conflictingSessions = this.list(queryWrapper);
 
-            // 格式化时间
-            String startTimeStr = conflictSession.getSessionTime().toString().replace("T", " ");
-            String endTimeStr = conflictSession.getEndTime().toString().replace("T", " ");
+        if (!conflictingSessions.isEmpty()) {
+            result.setHasConflict(true);
+            // 获取冲突的电影信息
+            MovieSessions firstConflict = conflictingSessions.get(0);
+            Movies movie = moviesMapper.selectById(firstConflict.getMovieId());
 
-            return ConflictCheckVO.conflict(
-                    conflictSession.getId(),
-                    movieName,
-                    startTimeStr,
-                    endTimeStr
-            );
+            String message = String.format("时间冲突：该影厅在 %s 到 %s 已有《%s》的场次安排",
+                    firstConflict.getSessionTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")),
+                    firstConflict.getEndTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")),
+                    movie != null ? movie.getTitle() : "未知电影");
+            result.setMessage(message);
         }
+
+        return result;
     }
 
     @Override
@@ -434,5 +448,8 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
         result.setTotalRows(hall.getTotalRows());
         result.setTotalColumns(hall.getTotalColumns());
         return result;
-    }}
+    }
+
+
+}
 

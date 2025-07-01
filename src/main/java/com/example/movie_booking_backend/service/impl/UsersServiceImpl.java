@@ -1,17 +1,18 @@
 package com.example.movie_booking_backend.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.movie_booking_backend.common.exception.BusinessException;
+import com.example.movie_booking_backend.common.utils.JwtUtils;
 import com.example.movie_booking_backend.mapper.RolesMapper;
 import com.example.movie_booking_backend.model.domain.Roles;
 import com.example.movie_booking_backend.model.domain.Users;
 import com.example.movie_booking_backend.mapper.UsersMapper;
-import com.example.movie_booking_backend.model.dto.ChangePasswordDTO;
-import com.example.movie_booking_backend.model.dto.UserCreationDTO;
-import com.example.movie_booking_backend.model.dto.UserUpdateDTO;
+import com.example.movie_booking_backend.model.dto.*;
+import com.example.movie_booking_backend.model.vo.AuthResultVO;
+import com.example.movie_booking_backend.model.vo.QQBindVO;
 import com.example.movie_booking_backend.model.vo.UserVO;
-import com.example.movie_booking_backend.model.dto.UserProfileUpdateDTO;
 import com.example.movie_booking_backend.service.IUsersService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.BeanUtils;
@@ -21,7 +22,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,6 +29,7 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -47,7 +48,8 @@ public class UsersServiceImpl extends ServiceImpl<UsersMapper, Users> implements
 
     @Autowired
     private RolesMapper rolesMapper;
-
+    @Autowired
+    private JwtUtils jwtUtils;
 
     @Override
     public Page<UserVO> listUsers(Page<Users> page, String username, String email, String status) {
@@ -168,15 +170,15 @@ public class UsersServiceImpl extends ServiceImpl<UsersMapper, Users> implements
 
         // 验证并更新各个字段
         if (updateDTO.getUsername() != null) {
-            validateUsername(updateDTO.getUsername());
+            validateUsername(updateDTO.getUsername(), id); // 传入当前用户ID
             user.setUsername(updateDTO.getUsername());
         }
         if (updateDTO.getEmail() != null) {
-            validateEmail(updateDTO.getEmail());
+            validateEmail(updateDTO.getEmail(), id); // 传入当前用户ID
             user.setEmail(updateDTO.getEmail());
         }
         if (updateDTO.getPhone() != null) {
-            validatePhone(updateDTO.getPhone());
+            validatePhone(updateDTO.getPhone(), id); // 传入当前用户ID
             user.setPhone(updateDTO.getPhone());
         }
 
@@ -184,7 +186,8 @@ public class UsersServiceImpl extends ServiceImpl<UsersMapper, Users> implements
         return user;
     }
 
-    private void validateUsername(String username) {
+    private void validateUsername(String username, Long currentUserId) {
+        // 基础校验
         if (username == null || username.trim().isEmpty()) {
             throw new IllegalArgumentException("用户名不能为空");
         }
@@ -197,27 +200,52 @@ public class UsersServiceImpl extends ServiceImpl<UsersMapper, Users> implements
         if (username.startsWith("_") || username.startsWith("-")) {
             throw new IllegalArgumentException("用户名不能以下划线或连字符开头");
         }
-        // 可以添加更多业务规则检查，如是否已存在等
+
+        // 唯一性校验（排除当前用户）
+        long count = count(new QueryWrapper<Users>()
+                .eq("username", username)
+                .ne("id", currentUserId) // 排除当前用户
+                .eq("is_deleted", false));
+        if (count > 0) {
+            throw new IllegalArgumentException("用户名已被使用");
+        }
     }
 
-    private void validateEmail(String email) {
+    private void validateEmail(String email, Long currentUserId) {
+        // 基础校验
         if (email == null || email.trim().isEmpty()) {
             throw new IllegalArgumentException("邮箱不能为空");
         }
-        // 简单的邮箱格式验证
         if (!email.matches("^[\\w-]+(\\.[\\w-]+)*@[\\w-]+(\\.[\\w-]+)+$")) {
             throw new IllegalArgumentException("邮箱格式不正确");
         }
-        // 可以添加更多业务规则检查，如是否已存在等
+
+        // 唯一性校验（排除当前用户）
+        long count = count(new QueryWrapper<Users>()
+                .eq("email", email)
+                .ne("id", currentUserId) // 排除当前用户
+                .eq("is_deleted", false));
+        if (count > 0) {
+            throw new IllegalArgumentException("邮箱已被注册");
+        }
     }
 
-    private void validatePhone(String phone) {
+    private void validatePhone(String phone, Long currentUserId) {
+        // 基础校验
         if (phone == null || phone.trim().isEmpty()) {
             throw new IllegalArgumentException("手机号不能为空");
         }
-        // 简单的手机号格式验证
-        if (!phone.matches("^1[3-9]\\d{9}$")) { // 假设是中国手机号
+        if (!phone.matches("^1[3-9]\\d{9}$")) {
             throw new IllegalArgumentException("手机号格式不正确");
+        }
+
+        // 唯一性校验（排除当前用户）
+        long count = count(new QueryWrapper<Users>()
+                .eq("phone", phone)
+                .ne("id", currentUserId) // 排除当前用户
+                .eq("is_deleted", false));
+        if (count > 0) {
+            throw new IllegalArgumentException("手机号已被使用");
         }
     }
 
@@ -325,4 +353,80 @@ public class UsersServiceImpl extends ServiceImpl<UsersMapper, Users> implements
         // 返回相对路径（如：/avatar/user_123_1681234567890.jpg）
         return "/avatar/" + filename;
     }
+
+    @Override
+    public AuthResultVO checkQQBind(String openId, String nickname, String avatar) {
+        // 1. 检查是否已绑定
+        Users user = lambdaQuery().eq(Users::getOpenId, openId).one();
+
+        if (user != null) {
+            // 2. 已绑定 - 直接生成token
+            String token = jwtUtils.generateToken(user.getUsername(), user.getId(), user.getRoleId().toString());
+            return AuthResultVO.bound(user, token);
+        }
+
+        // 3. 未绑定 - 生成建议用户名
+        String suggestedUsername = generateUsername(nickname);
+
+        return AuthResultVO.unbound(QQBindVO.builder()
+                .openId(openId)
+                .nickname(nickname)
+                .avatar(avatar)
+                .suggestedUsername(suggestedUsername)
+                .build());
+    }
+
+    private String generateUsername(String nickname) {
+        String cleanName = nickname.replaceAll("[^a-zA-Z0-9_\\u4e00-\\u9fa5]", "");
+        String randomSuffix = UUID.randomUUID().toString().substring(0, 4); // 取前4位
+        return cleanName + "_" + randomSuffix.toLowerCase();
+    }
+
+    @Override
+    @Transactional
+    public AuthResultVO bindQQAccount(BindRequestDTO request) {
+        // 1. 验证必填字段
+        if (StringUtils.isBlank(request.getUsername()) ){
+            throw new BusinessException("用户名不能为空");
+        }
+        if (StringUtils.isBlank(request.getPassword())) {
+            throw new BusinessException("密码不能为空");
+        }
+        if (StringUtils.isBlank(request.getOpenId())) {
+            throw new BusinessException("QQ openId不能为空");
+        }
+
+        // 2. 查询用户
+        Users user = getOne(new QueryWrapper<Users>()
+                .eq("username", request.getUsername())
+                .eq("is_deleted", false));
+
+        // 3. 验证用户是否存在
+        if (user == null) {
+            throw new BusinessException("用户名不存在");
+        }
+
+        // 4. 验证密码是否正确
+        if (!user.getPassword().equals(request.getPassword())) {
+            throw new BusinessException("密码错误");
+        }
+
+        // 5. 检查是否已绑定其他QQ
+        if (StringUtils.isNotBlank(user.getOpenId())) {
+            if (user.getOpenId().equals(request.getOpenId())) {
+                throw new BusinessException("该QQ已绑定当前账号");
+            } else {
+                throw new BusinessException("该账号已绑定其他QQ");
+            }
+        }
+
+        // 6. 执行绑定
+        user.setOpenId(request.getOpenId());
+        updateById(user);
+
+        // 7. 返回绑定成功信息
+        return AuthResultVO.bound(user,
+                jwtUtils.generateToken(user.getUsername(), user.getId(), user.getRoleId().toString()));
+    }
+
 }
