@@ -5,6 +5,7 @@ import com.example.movie_booking_backend.model.domain.MovieSessions;
 import com.example.movie_booking_backend.model.vo.SessionInfoVO;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -17,7 +18,7 @@ import java.util.List;
  */
 public interface MovieSessionsMapper extends BaseMapper<MovieSessions> {
 
-    List<SessionInfoVO> findSessionInfoByMovieId(Long movieId);
+//    List<SessionInfoVO> findSessionInfoByMovieId(Long movieId);
     
     /**
      * 根据关键字查询场次ID列表（匹配电影标题或影厅名称）
@@ -25,4 +26,6 @@ public interface MovieSessionsMapper extends BaseMapper<MovieSessions> {
      * @return 场次ID列表
      */
     List<Long> findSessionIdsByKeyword(@Param("keyword") String keyword);
+
+    List<SessionInfoVO> findSessionInfoByMovieIdWithDateRange(Long movieId, LocalDateTime todayStart, LocalDateTime tenDaysLaterEnd);
 }

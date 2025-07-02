@@ -42,4 +42,7 @@ public class OrderVO {
 
     @ApiModelProperty(value = "支付信息")
     private Payments payment;
+
+    @ApiModelProperty(value = "是否评分")
+    private Boolean isRated;
 } 

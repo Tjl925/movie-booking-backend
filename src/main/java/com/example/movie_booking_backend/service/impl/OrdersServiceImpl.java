@@ -174,6 +174,29 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders> impleme
     }
 
     @Override
+    public Boolean getOrderRatedStatus(Long orderId) {
+        Orders order = this.getById(orderId);
+        if (order == null) {
+            throw new BusinessException("订单不存在");
+        }
+        return order.getIsRated();
+    }
+
+    @Override
+    public List<OrderVO> getAllOrdersByUserId(Long userId) {
+        // 1. 查询用户所有未删除的订单
+        List<Orders> orders = this.list(new QueryWrapper<Orders>()
+                .eq("user_id", userId)
+                .eq("is_deleted", false)
+                .orderByDesc("created_at"));
+
+        // 2. 转换为OrderVO列表
+        return orders.stream()
+                .map(this::buildOrderVO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public OrderVO getOrderDetails(Long orderId, Long userId) {
         Orders order = this.getOne(new QueryWrapper<Orders>().eq("id", orderId).eq("user_id", userId));
         if (order == null) throw new BusinessException("订单不存在");

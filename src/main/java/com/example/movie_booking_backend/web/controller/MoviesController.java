@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.movie_booking_backend.common.JsonResponse;
 import com.example.movie_booking_backend.model.domain.Movies;
 import com.example.movie_booking_backend.model.dto.MovieDTO;
+import com.example.movie_booking_backend.model.dto.ratingDTO;
 import com.example.movie_booking_backend.service.IMoviesService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -199,8 +200,8 @@ public class MoviesController {
         return JsonResponse.success(null, "成功更新 " + count + " 部电影的区域");
     }
     @GetMapping("public/top10")
-    public JsonResponse<List<Movies>> getTop10Movies(){
-        return JsonResponse.success(moviesService.getTop10Movies());
+    public JsonResponse<List<Movies>> getTop5Movies(){
+        return JsonResponse.success(moviesService.getTop5Movies());
     }
 
     @GetMapping("public/boxOffice")
@@ -225,5 +226,18 @@ public class MoviesController {
             @ApiParam("返回数量") @RequestParam(defaultValue = "5") Integer limit) {
         return JsonResponse.success(moviesService.getRecommendedMovies(movieId, limit));
     }
-}
+
+    @ApiOperation("【前台】用户评分")
+    @PostMapping("/public/rate")
+    public JsonResponse<String> rateMovie(
+            @RequestBody ratingDTO ratingDTO) {
+        return moviesService.rateMovie(ratingDTO);
+    }
+    @ApiOperation("获取用户推荐电影")
+    @GetMapping("/public/recommendations/{userId}")
+    public JsonResponse<List<Movies>> getRecommendMovies(@PathVariable Long userId) {
+        List<Movies> recommendations = moviesService.getRecommendMovies(userId);
+        return JsonResponse.success(recommendations);
+
+}}
 

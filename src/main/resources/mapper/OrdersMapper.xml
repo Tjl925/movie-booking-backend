@@ -19,6 +19,7 @@
         <result column="created_at" property="createdAt" />
         <result column="updated_at" property="updatedAt" />
         <result column="is_deleted" property="deleted" />
+        <result column="is_rated" property="isRated" />
     </resultMap>
 
 </mapper>

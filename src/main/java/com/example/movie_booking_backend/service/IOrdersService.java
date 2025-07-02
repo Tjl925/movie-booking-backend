@@ -7,6 +7,8 @@ import com.example.movie_booking_backend.model.dto.OrderCreationDTO;
 import com.example.movie_booking_backend.model.vo.OrderVO;
 import io.swagger.annotations.ApiOperation;
 
+import java.util.List;
+
 /**
  * <p>
  * 订单表 服务类
@@ -41,4 +43,8 @@ public interface IOrdersService extends IService<Orders> {
     
     // 根据订单号查询订单
     Orders getOrderByOrderNumber(String orderNumber);
+
+    Boolean getOrderRatedStatus(Long id);
+
+    List<OrderVO> getAllOrdersByUserId(Long userId);
 }

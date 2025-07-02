@@ -3,6 +3,8 @@ package com.example.movie_booking_backend.web.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.movie_booking_backend.common.JsonResponse;
 import com.example.movie_booking_backend.model.domain.Orders;
+
+import java.util.List;
 import java.util.Map;
 
 import com.example.movie_booking_backend.model.domain.Seats;
@@ -101,7 +103,15 @@ public class OrdersController {
         Page<OrderVO> page = ordersService.getAllOrders(new Page<>(current, size));
         return JsonResponse.success(page);
     }
-    
+    @ApiOperation("用户根据用户ID获取所有订单(不分页)")
+    @GetMapping("/user/{userId}/all")
+    public JsonResponse<List<OrderVO>> getAllOrdersByUserId(@PathVariable Long userId) {
+        // 权限验证 - 确保用户只能查看自己的订单
+
+
+        List<OrderVO> orders = ordersService.getAllOrdersByUserId(userId);
+        return JsonResponse.success(orders);
+    }
     /**
      * 管理员删除订单
      * @param id 订单ID
@@ -123,6 +133,13 @@ public class OrdersController {
     public JsonResponse<Orders> getById(@PathVariable("id") Long id)throws Exception {
         Orders orders = ordersService.getById(id);
         return JsonResponse.success(orders);
+    }
+
+    @ApiOperation("查询订单是否已评分")
+    @GetMapping("/{id}/rated")
+    public JsonResponse<Boolean> getOrderRatedStatus(@PathVariable Long id) {
+        Boolean isRated = ordersService.getOrderRatedStatus(id);
+        return JsonResponse.success(isRated);
     }
 
 }

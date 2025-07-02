@@ -1,6 +1,7 @@
 package com.example.movie_booking_backend.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.movie_booking_backend.common.JsonResponse;
 import com.example.movie_booking_backend.common.exception.BusinessException;
@@ -14,14 +15,18 @@ import com.example.movie_booking_backend.service.IHallsService;
 import com.example.movie_booking_backend.service.IMovieSessionsService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.movie_booking_backend.service.ISeatsService;
+import com.example.movie_booking_backend.service.ISeatsSessionsService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -40,13 +45,15 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
 
     @Autowired
     private MoviesMapper moviesMapper;
-
+    @Autowired
+    private SeatsMapper seatsMapper;
     @Autowired
     private HallsMapper hallsMapper;
 
     @Autowired
     private ISeatsService seatsService;
-
+    @Autowired
+    private ISeatsSessionsService seatsSessionsService;
 
     @Autowired
     private HallsServiceImpl hallsService;
@@ -58,31 +65,66 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
     private MovieSessionsMapper movieSessionsMapper;
     @Autowired
     private SeatsSessionsMapper seatsSessionsMapper;
+
+
     @Override
     @Transactional
     public SessionVO createSession(SessionDTO sessionDTO) {
+        // 1. 校验电影是否存在且有效
         Movies movie = moviesMapper.selectById(sessionDTO.getMovieId());
-        if (movie == null || movie.getDeleted()) throw new BusinessException("电影不存在");
+        if (movie == null || movie.getDeleted()) {
+            throw new BusinessException("电影不存在或已下架");
+        }
 
+        // 2. 校验影厅是否存在且有效
         Halls hall = hallsMapper.selectById(sessionDTO.getHallId());
-        if (hall == null || hall.getDeleted()) throw new BusinessException("影厅不存在");
+        if (hall == null || hall.getDeleted()) {
+            throw new BusinessException("影厅不存在或已停用");
+        }
 
+        // 3. 计算并校验时间
         LocalDateTime startTime = sessionDTO.getSessionTime();
         LocalDateTime endTime = startTime.plusMinutes(movie.getDurationMinutes());
+        if (endTime.isBefore(startTime)) {
+            throw new BusinessException("结束时间不能早于开始时间");
+        }
 
-        // 检查时间冲突
+        // 4. 检查影厅时间冲突（包括其他场次）
         ConflictCheckVO conflictCheck = checkTimeConflict(sessionDTO.getHallId(), startTime, endTime, null);
         if (conflictCheck.getHasConflict()) {
             throw new BusinessException(conflictCheck.getMessage());
         }
 
+        // 5. 创建场次记录
         MovieSessions session = new MovieSessions();
         BeanUtils.copyProperties(sessionDTO, session);
-        session.setEndTime(endTime);
-        session.setCreatedAt(LocalDateTime.now());
-        session.setUpdatedAt(LocalDateTime.now());
-        session.setDeleted(false);
+        session.setEndTime(endTime)
+                .setCreatedAt(LocalDateTime.now())
+                .setUpdatedAt(LocalDateTime.now())
+                .setDeleted(false);
         this.save(session);
+
+        // 6. 初始化影厅座位关联（全部设为AVAILABLE）
+        List<Seats> seats = seatsMapper.selectList(
+                new QueryWrapper<Seats>()
+                        .eq("hall_id", sessionDTO.getHallId())
+                        .eq("is_deleted", false)
+        );
+
+        if (!seats.isEmpty()) {
+            List<SeatsSessions> seatsSessions = seats.stream()
+                    .map(seat -> new SeatsSessions()
+                            .setSeatId(seat.getId())
+                            .setSessionId(session.getId())
+                            .setStatus("AVAILABLE")
+                            .setCreatedAt(LocalDateTime.now())
+                            .setUpdatedAt(LocalDateTime.now())
+                            .setDeleted(false)
+                    )
+                    .collect(Collectors.toList());
+
+            seatsSessionsService.saveBatch(seatsSessions);
+        }
 
         return getSessionDetails(session.getId());
     }
@@ -90,29 +132,90 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
     @Override
     @Transactional
     public SessionVO updateSession(Long sessionId, SessionDTO sessionDTO) {
+        // 获取现有场次信息
         MovieSessions session = this.getById(sessionId);
-        if (session == null || session.getDeleted()) throw new BusinessException("场次不存在");
+        if (session == null || session.getDeleted()) {
+            throw new BusinessException("场次不存在");
+        }
 
+        // 验证电影是否存在
         Movies movie = moviesMapper.selectById(sessionDTO.getMovieId());
-        if (movie == null || movie.getDeleted()) throw new BusinessException("电影不存在");
+        if (movie == null || movie.getDeleted()) {
+            throw new BusinessException("电影不存在");
+        }
 
+        // 验证影厅是否存在
         Halls hall = hallsMapper.selectById(sessionDTO.getHallId());
-        if (hall == null || hall.getDeleted()) throw new BusinessException("影厅不存在");
+        if (hall == null || hall.getDeleted()) {
+            throw new BusinessException("影厅不存在");
+        }
 
         LocalDateTime startTime = sessionDTO.getSessionTime();
         LocalDateTime endTime = startTime.plusMinutes(movie.getDurationMinutes());
 
-        // 检查时间冲突
+        // 检查影厅是否被修改
+        boolean isHallChanged = !session.getHallId().equals(sessionDTO.getHallId());
+
+        if (isHallChanged) {
+            // 如果影厅被修改，检查是否有已预订的座位
+            List<SeatsSessions> bookedSeats = seatsSessionsMapper.selectList(
+                    new QueryWrapper<SeatsSessions>()
+                            .eq("session_id", sessionId)
+                            .ne("status", "AVAILABLE") // 非可用状态的座位
+                            .eq("is_deleted", false)
+            );
+
+            if (!bookedSeats.isEmpty()) {
+                throw new BusinessException("该场次已有座位被预订，无法修改影厅");
+            }
+        }
+
+        // 检查时间冲突（包括新旧影厅的时间冲突）
         ConflictCheckVO conflictCheck = checkTimeConflict(sessionDTO.getHallId(), startTime, endTime, sessionId);
         if (conflictCheck.getHasConflict()) {
             throw new BusinessException(conflictCheck.getMessage());
         }
 
+        // 更新场次信息
         BeanUtils.copyProperties(sessionDTO, session);
         session.setId(sessionId);
         session.setEndTime(endTime);
         session.setUpdatedAt(LocalDateTime.now());
         this.updateById(session);
+
+        // 如果影厅被修改，需要更新座位场次关联表中的座位信息
+        if (isHallChanged) {
+            // 1. 删除旧的座位关联（逻辑删除）
+            seatsSessionsMapper.update(null,
+                    new UpdateWrapper<SeatsSessions>()
+                            .eq("session_id", sessionId)
+                            .set("is_deleted", true)
+                            .set("updated_at", LocalDateTime.now())
+            );
+
+            // 2. 创建新的座位关联（从新影厅中获取所有座位）
+            List<Seats> newHallSeats = seatsMapper.selectList(
+                    new QueryWrapper<Seats>()
+                            .eq("hall_id", sessionDTO.getHallId())
+                            .eq("is_deleted", false)
+            );
+
+            List<SeatsSessions> newSeatsSessions = newHallSeats.stream()
+                    .map(seat -> new SeatsSessions()
+                            .setSeatId(seat.getId())
+                            .setSessionId(sessionId)
+                            .setStatus("AVAILABLE")
+                            .setCreatedAt(LocalDateTime.now())
+                            .setUpdatedAt(LocalDateTime.now())
+                            .setDeleted(false)
+                    )
+                    .collect(Collectors.toList());
+
+            if (!newSeatsSessions.isEmpty()) {
+                // 批量插入新的座位关联
+                seatsSessionsService.saveBatch(newSeatsSessions);
+            }
+        }
 
         return getSessionDetails(session.getId());
     }
@@ -120,17 +223,53 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
     @Override
     @Transactional
     public void deleteSession(Long sessionId) {
+        // 1. 校验场次是否存在且未删除
         MovieSessions session = this.getById(sessionId);
-        if (session == null) return;
+        if (session == null || session.getDeleted()) {
+            throw new BusinessException("场次不存在或已被删除");
+        }
 
-        // 检查场次是否已开始
+        // 2. 检查场次是否已开始
         if (session.getSessionTime().isBefore(LocalDateTime.now())) {
             throw new BusinessException("不能删除已开始或已结束的场次");
         }
 
-        session.setDeleted(true);
-        session.setUpdatedAt(LocalDateTime.now());
+        // 3. 检查是否有已预订的座位
+        List<SeatsSessions> bookedSeats = seatsSessionsMapper.selectList(
+                new QueryWrapper<SeatsSessions>()
+                        .eq("session_id", sessionId)
+                        .ne("status", "AVAILABLE")
+                        .eq("is_deleted", false)
+        );
+        if (!bookedSeats.isEmpty()) {
+            throw new BusinessException("该场次已有座位被预订，无法删除");
+        }
+
+//        // 4. 检查是否有未完成的订单（可选，根据业务需求）
+//        List<Orders> activeOrders = OrdersMapper.selectList(
+//                new QueryWrapper<Orders>()
+//                        .eq("session_id", sessionId)
+//                        .notIn("status", Arrays.asList("CANCELLED", "COMPLETED"))
+//                        .eq("is_deleted", false)
+//        );
+//        if (!activeOrders.isEmpty()) {
+//            throw new BusinessException("该场次存在未完成的订单，无法删除");
+//        }
+
+        // 5. 逻辑删除场次
+        session.setDeleted(true)
+                .setUpdatedAt(LocalDateTime.now());
         this.updateById(session);
+
+        // 6. 逻辑删除关联的座位记录（可选）
+        seatsSessionsMapper.update(
+                null,
+                new UpdateWrapper<SeatsSessions>()
+                        .eq("session_id", sessionId)
+                        .set("is_deleted", true)
+                        .set("updated_at", LocalDateTime.now())
+        );
+
     }
 
     @Override
@@ -236,8 +375,26 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
     }
 
     @Override
+    @Cacheable(value = "movieSessions", key = "#movieId + '_' + T(java.time.LocalDate).now()")
     public List<SessionInfoVO> getSessionInfosByMovieId(Long movieId) {
-        return movieSessionsMapper.findSessionInfoByMovieId(movieId);
+        // 获取当前时间
+        LocalDateTime now = LocalDateTime.now();
+        // 今天的00:00:00
+        LocalDateTime todayStart = now.toLocalDate().atStartOfDay();
+        // 7天后的23:59:59
+        LocalDateTime tenDaysLaterEnd = todayStart.plusDays(7).with(LocalTime.MAX);
+
+        // 查询7天内的场次
+        List<SessionInfoVO> sessions = movieSessionsMapper.findSessionInfoByMovieIdWithDateRange(
+                movieId,
+                todayStart,
+                tenDaysLaterEnd
+        );
+
+        // 过滤掉已过期的场次（当前时间之前的）
+        return sessions.stream()
+                .filter(session -> session.getSessionTime().isAfter(now.minusMinutes(1))) // 减去1分钟避免边界问题
+                .collect(Collectors.toList());
     }
 
     private SessionVO mapToSessionVO(MovieSessions session) {
