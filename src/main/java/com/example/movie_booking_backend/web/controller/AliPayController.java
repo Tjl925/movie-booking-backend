@@ -2,6 +2,7 @@ package com.example.movie_booking_backend.web.controller;
 
 import com.alibaba.fastjson.JSONObject;
 import com.example.movie_booking_backend.common.JsonResponse;
+import com.example.movie_booking_backend.common.exception.BusinessException;
 import com.example.movie_booking_backend.common.utils.JwtUtils;
 import com.example.movie_booking_backend.common.utils.PayUtils;
 import com.example.movie_booking_backend.model.domain.Orders;
@@ -20,6 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.web.bind.annotation.RequestBody;
+import springfox.documentation.spring.web.json.Json;
 
 @Controller
 @RequestMapping("/api/alipay")
@@ -189,8 +191,11 @@ public class AliPayController {
                 return JsonResponse.failure("订单金额不存在，无法退款");
             }
             
+            // 生成退款请求号，确保幂等性
+            String outRequestNo = orderNumber + "_refund_" + System.currentTimeMillis();
+            
             // 调用支付宝退款接口
-            String refundResult = payUtils.refund(orderNumber, null, orderAmount.toString(), refundReason);
+            String refundResult = payUtils.refund(orderNumber, null, orderAmount.toString(), refundReason, outRequestNo);
             
             // 解析退款结果
             JSONObject jsonObject = JSONObject.parseObject(refundResult);
@@ -221,6 +226,10 @@ public class AliPayController {
                 paymentsService.save(payment);
                 
                 return JsonResponse.success("退款成功");
+            } else if (responseData != null && "20000".equals(responseData.getString("code")) && 
+                      "aop.ACQ.SYSTEM_ERROR".equals(responseData.getString("sub_code"))) {
+                // 系统错误，可能需要查询退款结果
+                return JsonResponse.failure("退款处理中，请稍后查询退款结果");
             } else {
                 // 退款失败
                 String errorMsg = responseData != null ? responseData.getString("sub_msg") : "未知错误";
@@ -229,6 +238,111 @@ public class AliPayController {
         } catch (Exception e) {
             e.printStackTrace();
             return JsonResponse.failure("退款处理异常: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 退款查询接口
+     * @param requestBody 包含orderId的请求体
+     * @return 退款查询结果
+     */
+    @ResponseBody
+    @PostMapping("/refund/query")
+    public JsonResponse<Map<String, Object>> refundQuery(@RequestBody Map<String, Object> requestBody) {
+        Long orderId = Long.valueOf(requestBody.get("orderId").toString());
+        String outRequestNo = requestBody.get("outRequestNo") != null ? 
+                              requestBody.get("outRequestNo").toString() : null;
+        
+        try {
+            // 获取订单信息
+            Orders order = ordersService.getOrders(orderId);
+            if (order == null) {
+                return JsonResponse.failure("订单不存在");
+            }
+            
+            // 获取订单号
+            String orderNumber = order.getOrderNumber();
+            if (orderNumber == null || orderNumber.isEmpty()) {
+                return JsonResponse.failure("订单号不存在，无法查询退款");
+            }
+            
+            // 如果没有提供退款请求号，则使用默认格式
+            if (outRequestNo == null || outRequestNo.isEmpty()) {
+                // 查询最近的退款记录
+                Payments refundPayment = paymentsService.getLatestRefundByOrderId(orderId);
+                if (refundPayment != null && refundPayment.getTransactionId() != null) {
+                    // 如果有退款记录，使用其中的退款请求号
+                    JSONObject gatewayResponse = JSONObject.parseObject(refundPayment.getGatewayResponse());
+                    JSONObject refundResponse = gatewayResponse.getJSONObject("alipay_trade_refund_response");
+                    if (refundResponse != null && refundResponse.containsKey("out_request_no")) {
+                        outRequestNo = refundResponse.getString("out_request_no");
+                    } else {
+                        outRequestNo = orderNumber + "_refund";
+                    }
+                } else {
+                    outRequestNo = orderNumber + "_refund";
+                }
+            }
+            
+            // 调用支付宝退款查询接口
+            String queryResult = payUtils.refundQuery(orderNumber, null, outRequestNo);
+            
+            // 解析查询结果
+            JSONObject jsonObject = JSONObject.parseObject(queryResult);
+            JSONObject responseData = jsonObject.getJSONObject("alipay_trade_fastpay_refund_query_response");
+            
+            Map<String, Object> resultMap = new HashMap<>();
+            
+            if (responseData != null && "10000".equals(responseData.getString("code"))) {
+                // 查询成功
+                String refundStatus = responseData.getString("refund_status");
+                resultMap.put("refundStatus", refundStatus);
+                
+                if ("REFUND_SUCCESS".equals(refundStatus)) {
+                    // 退款成功，如果订单状态还不是已退款，则更新
+                    if (!"REFUNDED".equals(order.getStatus())) {
+                        order.setStatus("REFUNDED");
+                        order.setUpdatedAt(LocalDateTime.now());
+                        ordersService.updateById(order);
+                        
+                        // 创建退款记录（如果不存在）
+                        Payments existingRefund = paymentsService.getRefundByOrderIdAndRequestNo(orderId, outRequestNo);
+                        if (existingRefund == null) {
+                            Payments payment = new Payments();
+                            payment.setOrderId(order.getId());
+                            payment.setUserId(order.getUserId());
+                            payment.setPaymentMethod("ALIPAY");
+                            payment.setPaymentAmount(order.getTotalAmount().negate()); // 使用负数表示退款
+                            payment.setTransactionId(responseData.getString("trade_no"));
+                            payment.setPaymentStatus("REFUNDED");
+                            payment.setPaymentTime(LocalDateTime.now());
+                            payment.setGatewayResponse(queryResult);
+                            payment.setGatewayCode(responseData.getString("code"));
+                            payment.setGatewayMessage(responseData.getString("msg"));
+                            payment.setCreatedAt(LocalDateTime.now());
+                            payment.setUpdatedAt(LocalDateTime.now());
+                            
+                            // 保存退款记录
+                            paymentsService.save(payment);
+                        }
+                    }
+                    resultMap.put("message", "退款已成功处理");
+                    return JsonResponse.success(resultMap);
+                } else if ("REFUND_PROCESSING".equals(refundStatus)) {
+                    resultMap.put("message", "退款正在处理中，请稍后再查询");
+                    return JsonResponse.success(resultMap);
+                } else {
+                    resultMap.put("message", "退款状态: " + refundStatus);
+                    return JsonResponse.success(resultMap);
+                }
+            } else {
+                // 查询失败
+                String errorMsg = responseData != null ? responseData.getString("sub_msg") : "未知错误";
+                return JsonResponse.failure("退款查询失败: " + errorMsg);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return JsonResponse.failure("退款查询处理异常: " + e.getMessage());
         }
     }
 }

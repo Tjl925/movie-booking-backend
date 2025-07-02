@@ -53,12 +53,17 @@
     <select id="findSessionIdsByKeyword" resultType="java.lang.Long">
         SELECT DISTINCT ms.id
         FROM movie_sessions ms
-        JOIN movies m ON ms.movie_id = m.id
-        JOIN halls h ON ms.hall_id = h.id
-        WHERE (m.title LIKE CONCAT('%', #{keyword}, '%') OR h.hall_name LIKE CONCAT('%', #{keyword}, '%'))
-        AND ms.is_deleted = false
-        AND m.is_deleted = false
-        AND h.is_deleted = false
+                 JOIN movies m ON ms.movie_id = m.id
+                 JOIN halls h ON ms.hall_id = h.id
+        WHERE (m.title LIKE CONCAT('%', #{keyword}, '%') OR h.hall_name LIKE CONCAT('%', #{keyword}, '%') OR
+               (CASE m.status
+                    WHEN 'UPCOMING' THEN '即将上映'
+                    WHEN 'NOW_SHOWING' THEN '上映中'
+                    ELSE m.status
+                    END LIKE CONCAT('%', #{keyword}, '%')))
+          AND ms.is_deleted = false
+          AND m.is_deleted = false
+          AND h.is_deleted = false
     </select>
     <select id="findSessionInfoByMovieIdWithDateRange"
             resultType="com.example.movie_booking_backend.model.vo.SessionInfoVO">

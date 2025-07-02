@@ -504,11 +504,21 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
     public Page<SessionVO> getSessionList(Integer page, Integer size, String keyword) {
         // 构建查询条件
         QueryWrapper<MovieSessions> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("is_deleted", false);
+        queryWrapper.eq("is_deleted", false).gt("session_time", LocalDateTime.now());
+
+        // 先查出所有status不为ENDED的电影ID
+        List<Long> notEndedMovieIds = moviesMapper.selectList(
+                new QueryWrapper<Movies>().ne("status", "ENDED").eq("is_deleted", false)
+        ).stream().map(Movies::getId).collect(Collectors.toList());
+
+        if (notEndedMovieIds.isEmpty()) {
+            // 没有未下架的电影，直接返回空
+            return new Page<>();
+        }
+        queryWrapper.in("movie_id", notEndedMovieIds);
 
         // 如果有关键字，则搜索电影标题或影厅名称
         if (keyword != null && !keyword.trim().isEmpty()) {
-            // 这里需要使用子查询或连接查询，简化起见，我们先获取所有符合条件的场次ID
             List<Long> sessionIds = movieSessionsMapper.findSessionIdsByKeyword(keyword);
             if (!sessionIds.isEmpty()) {
                 queryWrapper.in("id", sessionIds);

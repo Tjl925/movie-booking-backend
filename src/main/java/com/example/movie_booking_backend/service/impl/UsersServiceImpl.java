@@ -421,6 +421,8 @@ public class UsersServiceImpl extends ServiceImpl<UsersMapper, Users> implements
         }
 
         // 6. 执行绑定
+        user.setLastLogin(LocalDateTime.now());
+        user.setLoginCount(user.getLoginCount() + 1);
         user.setOpenId(request.getOpenId());
         updateById(user);
 

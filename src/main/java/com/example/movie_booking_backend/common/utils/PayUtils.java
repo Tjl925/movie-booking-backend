@@ -4,14 +4,16 @@ import com.alibaba.fastjson.JSONObject;
 import com.alipay.api.AlipayApiException;
 import com.alipay.api.AlipayClient;
 import com.alipay.api.DefaultAlipayClient;
+import com.alipay.api.diagnosis.DiagnosisUtils;
 import com.alipay.api.request.AlipayTradePagePayRequest;
 import com.alipay.api.request.AlipayTradeQueryRequest;
 import com.alipay.api.request.AlipayTradeRefundRequest;
+import com.alipay.api.request.AlipayTradeFastpayRefundQueryRequest;
 import com.alipay.api.response.AlipayTradeQueryResponse;
 import com.alipay.api.response.AlipayTradeRefundResponse;
+import com.alipay.api.response.AlipayTradeFastpayRefundQueryResponse;
 import com.alipay.api.domain.AlipayTradeRefundModel;
-import com.example.movie_booking_backend.service.IOrdersService;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.alipay.api.domain.AlipayTradeFastpayRefundQueryModel;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -93,9 +95,10 @@ public class PayUtils {
      * @param tradeNo 支付宝交易号
      * @param refundAmount 退款金额
      * @param refundReason 退款原因
+     * @param outRequestNo 退款请求号，标识一次退款请求，同一笔交易多次退款需要保证唯一，如果部分退款，则此参数必传
      * @return 退款结果
      */
-    public String refund(String outTradeNo, String tradeNo, String refundAmount, String refundReason) {
+    public String refund(String outTradeNo, String tradeNo, String refundAmount, String refundReason, String outRequestNo) {
         // 确保alipayClient已初始化，设置连接超时和读取超时时间
         if (alipayClient == null) {
             alipayClient = new DefaultAlipayClient(GATEWAY_URL, APP_ID, APP_PRIVATE_KEY, FORMAT, CHARSET, ALIPAY_PUBLIC_KEY, SIGN_TYPE, "30000", "30000");
@@ -103,13 +106,11 @@ public class PayUtils {
         
         AlipayTradeRefundRequest request = new AlipayTradeRefundRequest();
         AlipayTradeRefundModel model = new AlipayTradeRefundModel();
-        
-        // 设置商户订单号（与支付宝交易号二选一，如果都存在优先使用商户订单号）
+
         if (outTradeNo != null && !outTradeNo.isEmpty()) {
             model.setOutTradeNo(outTradeNo);
         }
-        
-        // 设置支付宝交易号（与商户订单号二选一）
+
         if (tradeNo != null && !tradeNo.isEmpty()) {
             model.setTradeNo(tradeNo);
         }
@@ -122,6 +123,14 @@ public class PayUtils {
             model.setRefundReason(refundReason);
         }
         
+        // 设置退款请求号，用于幂等性控制
+        if (outRequestNo != null && !outRequestNo.isEmpty()) {
+            model.setOutRequestNo(outRequestNo);
+        } else {
+            // 如果没有提供退款请求号，则使用订单号+时间戳作为退款请求号
+            model.setOutRequestNo(outTradeNo + "_" + System.currentTimeMillis());
+        }
+
         request.setBizModel(model);
         
         AlipayTradeRefundResponse response = null;
@@ -191,6 +200,72 @@ public class PayUtils {
             System.out.println("退款调用成功");
         } else {
             System.out.println("退款调用失败");
+            String diagnosisUrl = DiagnosisUtils.getDiagnosisUrl(response);
+            System.out.println(diagnosisUrl);
+        }
+
+        return body;
+    }
+
+    /**
+     * 支付宝退款查询接口
+     * @param outTradeNo 商户订单号
+     * @param tradeNo 支付宝交易号
+     * @param outRequestNo 退款请求号
+     * @return 退款查询结果
+     */
+    public String refundQuery(String outTradeNo, String tradeNo, String outRequestNo) {
+        // 确保alipayClient已初始化，设置连接超时和读取超时时间
+        if (alipayClient == null) {
+            alipayClient = new DefaultAlipayClient(GATEWAY_URL, APP_ID, APP_PRIVATE_KEY, FORMAT, CHARSET, ALIPAY_PUBLIC_KEY, SIGN_TYPE, "30000", "30000");
+        }
+
+        AlipayTradeFastpayRefundQueryRequest request = new AlipayTradeFastpayRefundQueryRequest();
+        AlipayTradeFastpayRefundQueryModel model = new AlipayTradeFastpayRefundQueryModel();
+
+        if (outTradeNo != null && !outTradeNo.isEmpty()) {
+            model.setOutTradeNo(outTradeNo);
+        }
+
+        if (tradeNo != null && !tradeNo.isEmpty()) {
+            model.setTradeNo(tradeNo);
+        }
+
+        // 退款请求号是必填项
+        if (outRequestNo == null || outRequestNo.isEmpty()) {
+            throw new IllegalArgumentException("退款请求号不能为空");
+        }
+        model.setOutRequestNo(outRequestNo);
+
+        request.setBizModel(model);
+
+        AlipayTradeFastpayRefundQueryResponse response = null;
+        String body = null;
+
+        try {
+            System.out.println("开始执行退款查询请求...");
+            response = alipayClient.execute(request);
+            body = response.getBody();
+            System.out.println("退款查询响应：" + body);
+
+            if (response.isSuccess()) {
+                System.out.println("退款查询调用成功");
+            } else {
+                System.out.println("退款查询调用失败");
+                String diagnosisUrl = DiagnosisUtils.getDiagnosisUrl(response);
+                System.out.println(diagnosisUrl);
+            }
+        } catch (AlipayApiException e) {
+            System.err.println("退款查询请求异常: " + e.getMessage());
+            // 详细记录异常信息
+            if (e.getCause() != null) {
+                System.err.println("异常原因: " + e.getCause().getMessage());
+                e.getCause().printStackTrace();
+            }
+            e.printStackTrace();
+        } catch (Exception e) {
+            System.err.println("退款查询过程中发生未知异常: " + e.getMessage());
+            e.printStackTrace();
         }
         
         return body;

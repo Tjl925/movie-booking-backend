@@ -206,7 +206,7 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders> impleme
 
     @Override
     public Page<OrderVO> getUserOrders(Page<Orders> page, Long userId) {
-        Page<Orders> orderPage = this.page(page, new QueryWrapper<Orders>().eq("user_id", userId).ne("status", "CANCELLED").orderByDesc("created_at"));
+        Page<Orders> orderPage = this.page(page, new QueryWrapper<Orders>().eq("user_id", userId).ne("status", "CANCELLED").eq("is_deleted", false).orderByDesc("created_at"));
 
         Page<OrderVO> voPage = new Page<>();
         BeanUtils.copyProperties(orderPage, voPage);

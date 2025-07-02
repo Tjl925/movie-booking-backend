@@ -229,16 +229,12 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
     private MoviesMapper moviesMapper;
 
     @Override
-    public List<Movies> getTop5Movies() {
-        // 方法1：使用MyBatis-Plus查询
+    public List<Movies> getTop10Movies() {
         QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
         queryWrapper.orderByDesc("rating")  // 按评分降序
                 .last("LIMIT 10");      // 限制10条
 
         return moviesMapper.selectList(queryWrapper);
-
-        // 方法2：使用自定义SQL（推荐复杂查询）
-        // return moviesMapper.selectTop10Movies();
     }
 
     @Override
@@ -435,7 +431,7 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
     @Override
     public Page<Movies> searchMovies(Page<Movies> page, String keyword) {
         QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("is_deleted", false);
+        queryWrapper.ne("status", "ENDED");
 
         // 构建搜索条件
         queryWrapper.and(wrapper -> wrapper
@@ -461,9 +457,7 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
 
         // 2. 获取所有候选电影（排除当前电影和已下架电影）
         QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
-        queryWrapper.ne("id", movieId)
-                .eq("is_deleted", false)
-                .eq("status", "NOW_SHOWING"); // 只推荐正在上映的电影
+        queryWrapper.ne("id", movieId).ne("status", "ENDED");
         List<Movies> allMovies = this.list(queryWrapper);
 
         // 3. 计算每部电影的推荐得分
@@ -572,7 +566,7 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
     public List<Map<String, Object>> getAllGenresWithCount() {
         // 1. 查询所有未删除的电影及其类型
         QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("is_deleted", false);
+        queryWrapper.ne("status", "ENDED");
         queryWrapper.select("id", "genre"); // 只查询ID和genre字段
 
         List<Movies> movies = this.baseMapper.selectList(queryWrapper);
@@ -610,7 +604,7 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
     @Override
     public Page<Movies> listMoviesByGenre(Page<Movies> page, String genre) {
         QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("is_deleted", false);
+        queryWrapper.ne("status", "ENDED");
 
         if (genre != null && !genre.isEmpty()) {
             queryWrapper.like("genre", genre);
@@ -622,7 +616,7 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
     public List<Map<String, Object>> getAllRegionsWithCount() {
         // 查询所有未删除的电影
         QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("is_deleted", false);
+        queryWrapper.ne("status", "ENDED");
         queryWrapper.select("country", "COUNT(*) as count");
         queryWrapper.groupBy("country");
 
@@ -644,7 +638,7 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
     @Override
     public Page<Movies> listMoviesByRegion(Page<Movies> page, String region) {
         QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("is_deleted", false);
+        queryWrapper.ne("status", "ENDED");
 
         if (region != null && !region.isEmpty()) {
             queryWrapper.eq("country", region);
@@ -662,7 +656,7 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
 
         // 查询符合条件的电影
         QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("genre", genre).eq("is_deleted", false);
+        queryWrapper.like("genre", genre).ne("status", "ENDED");
         List<Movies> moviesList = this.list(queryWrapper);
 
         if (moviesList.isEmpty()) {
@@ -690,7 +684,7 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
 
         // 查询符合条件的电影
         QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("country", region).eq("is_deleted", false);
+        queryWrapper.eq("country", region).ne("status", "ENDED");
         List<Movies> moviesList = this.list(queryWrapper);
 
         if (moviesList.isEmpty()) {
@@ -722,7 +716,7 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
 
         // 查询符合条件的电影
         QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
-        queryWrapper.like("genre", oldGenre).eq("is_deleted", false);
+        queryWrapper.like("genre", oldGenre).ne("status", "ENDED");
         List<Movies> moviesList = this.list(queryWrapper);
 
         if (moviesList.isEmpty()) {
@@ -756,7 +750,7 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
 
         // 查询符合条件的电影
         QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("country", oldRegion).eq("is_deleted", false);
+        queryWrapper.eq("country", oldRegion).ne("status", "ENDED");
         List<Movies> moviesList = this.list(queryWrapper);
 
         if (moviesList.isEmpty()) {

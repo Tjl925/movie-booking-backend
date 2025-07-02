@@ -22,6 +22,9 @@ public class OrderVO {
     @ApiModelProperty(value = "用户ID")
     private Long userId;
 
+    @ApiModelProperty(value = "座位号")
+    private String seatNumbers;
+
     @ApiModelProperty(value = "票数")
     private int ticketCount;
 
