@@ -93,5 +93,7 @@ public class Orders implements Serializable {
     @TableField("is_deleted")
     private Boolean deleted;
 
-
+    @ApiModelProperty(value = "是否评分")
+    @TableField("is_rated")
+    private Boolean isRated;
 }

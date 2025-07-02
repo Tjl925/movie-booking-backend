@@ -16,8 +16,6 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class PayUtils {
-    @Autowired
-    private IOrdersService ordersService;
     //appid
     private final String APP_ID = "9021000149696881";
     //应用私钥

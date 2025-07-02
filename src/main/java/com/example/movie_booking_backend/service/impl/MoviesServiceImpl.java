@@ -2,13 +2,21 @@ package com.example.movie_booking_backend.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.movie_booking_backend.common.JsonResponse;
 import com.example.movie_booking_backend.common.exception.BusinessException;
+import com.example.movie_booking_backend.mapper.OrdersMapper;
 import com.example.movie_booking_backend.model.domain.Movies;
 import com.example.movie_booking_backend.mapper.MoviesMapper;
+import com.example.movie_booking_backend.model.domain.Orders;
 import com.example.movie_booking_backend.model.dto.MovieDTO;
+import com.example.movie_booking_backend.model.dto.ratingDTO;
+import com.example.movie_booking_backend.model.vo.OrderVO;
 import com.example.movie_booking_backend.service.FileService;
 import com.example.movie_booking_backend.service.IMoviesService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.movie_booking_backend.service.IOrdersService;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,6 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -41,7 +51,10 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
             "image/jpeg", "image/png", "image/gif"
     );
 
-
+  @Autowired
+  private OrdersMapper ordersMapper;
+  @Autowired
+  private IOrdersService ordersService;
 
     @Override
     @Transactional
@@ -216,7 +229,7 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
     private MoviesMapper moviesMapper;
 
     @Override
-    public List<Movies> getTop10Movies() {
+    public List<Movies> getTop5Movies() {
         // 方法1：使用MyBatis-Plus查询
         QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
         queryWrapper.orderByDesc("rating")  // 按评分降序
@@ -234,6 +247,190 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
         queryWrapper.orderByDesc("box_office")  // 按票房降序
                 .last("LIMIT 10");      // 限制10条
         return moviesMapper.selectList(queryWrapper);
+    }
+
+    @Override
+    public JsonResponse<String> rateMovie(ratingDTO dto) {
+        try {
+            // 1. 验证评分范围
+            if (dto.getRating() < 1 || dto.getRating() > 10) {
+                return JsonResponse.failure("评分必须在1-10之间");
+            }
+
+            // 2. 获取订单并验证
+            Orders order = ordersMapper.selectById(dto.getOrderId());
+            if (order == null || order.getDeleted()) {
+                return JsonResponse.failure("订单不存在或已删除");
+            }
+            if (order.getIsRated()) {
+                return JsonResponse.failure("该订单已评分");
+            }
+            if (!order.getStatus().equals("PAID")) {
+                return JsonResponse.failure("只有已支付的订单才能评分");
+            }
+
+            // 3. 获取电影并验证
+            Movies movie = this.getById(dto.getMovieId());
+            if (movie == null || movie.getDeleted()) {
+                return JsonResponse.failure("电影不存在或已下架");
+            }
+
+            // 4. 计算新评分
+            BigDecimal oldRating = movie.getRating() != null ? movie.getRating() : BigDecimal.ZERO;
+            int oldCount = movie.getRatingCount() != null ? movie.getRatingCount() : 0;
+
+            // 新评分 = (旧评分 * 旧评分数 + 新评分) / (旧评分数 + 1)
+            BigDecimal newRating = oldRating.multiply(BigDecimal.valueOf(oldCount))
+                    .add(BigDecimal.valueOf(dto.getRating()))
+                    .divide(BigDecimal.valueOf(oldCount + 1), 2, RoundingMode.HALF_UP);
+
+            // 5. 更新电影评分
+            movie.setRating(newRating);
+            movie.setRatingCount(oldCount + 1);
+            this.updateById(movie);
+
+            // 6. 更新订单评分状态
+            order.setIsRated(true);
+            ordersMapper.updateById(order);
+            return JsonResponse.success("评分成功");
+        } catch (Exception e) {
+            log.error("评分失败", e);
+            return JsonResponse.failure("评分失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public List<Movies> getRecommendMovies(Long userId) {
+        // 1. 获取用户所有有效订单中的电影（PAID/COMPLETED状态）
+        List<Movies> watchedMovies = ordersService.getAllOrdersByUserId(userId).stream()
+                .filter(order -> "PAID".equals(order.getStatus()) || "COMPLETED".equals(order.getStatus()))
+                .map(order -> order.getSession().getMovie())
+                .filter(Objects::nonNull)
+                .distinct() // 替代原来的Set去重
+                .collect(Collectors.toList());
+
+        // 2. 获取候选电影（排除已看过的）
+        List<Movies> candidates = getCandidateMovies(
+                watchedMovies.stream().map(Movies::getId).collect(Collectors.toSet())
+        );
+
+        // 3. 计算推荐电影（最多5部）
+        List<Movies> recommendations = new ArrayList<>();
+
+        if (!watchedMovies.isEmpty()) {
+            // 3.1 有观看历史：基于偏好推荐
+            UserPreference preference = analyzeUserPreferences(watchedMovies);
+            recommendations = candidates.stream()
+                    .map(movie -> new ScoredMovie(movie, calculateScore(movie, preference)))
+                    .sorted((a, b) -> Double.compare(b.getScore(), a.getScore()))
+                    .limit(5)
+                    .map(ScoredMovie::getMovie)
+                    .collect(Collectors.toList());
+        }
+
+        // 4. 如果推荐不足5部，用热门电影补足
+        if (recommendations.size() < 5) {
+            int needed = 5 - recommendations.size();
+            List<Movies> topMovies = this.getTop5Movies().stream()
+                    .filter(m -> !watchedMovies.contains(m)) // 确保不重复推荐
+                    .limit(needed)
+                    .collect(Collectors.toList());
+            recommendations.addAll(topMovies);
+        }
+
+        return recommendations.size() > 5 ?
+                recommendations.subList(0, 5) :
+                recommendations;
+    }
+
+
+    // --- 辅助方法 ---
+    private UserPreference analyzeUserPreferences(List<Movies> watchedMovies) {
+        UserPreference preference = new UserPreference();
+
+        // 分析最喜欢的3种类型
+        Map<String, Long> genreCount = watchedMovies.stream()
+                .flatMap(movie -> Arrays.stream(movie.getGenre().split(",")))
+                .map(String::trim)
+                .collect(Collectors.groupingBy(
+                        genre -> genre,
+                        Collectors.counting()
+                ));
+
+        preference.setFavoriteGenres(
+                genreCount.entrySet().stream()
+                        .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                        .limit(3)
+                        .map(Map.Entry::getKey)
+                        .collect(Collectors.toSet())
+        );
+
+        // 分析最喜欢的导演
+        Map<String, Long> directorCount = watchedMovies.stream()
+                .collect(Collectors.groupingBy(
+                        Movies::getDirector,
+                        Collectors.counting()
+                ));
+
+        preference.setFavoriteDirectors(
+                directorCount.entrySet().stream()
+                        .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                        .limit(2)
+                        .map(Map.Entry::getKey)
+                        .collect(Collectors.toSet())
+        );
+
+        return preference;
+    }
+
+    private List<Movies> getCandidateMovies(Set<Long> excludedMovieIds) {
+        return moviesMapper.selectList(
+                new QueryWrapper<Movies>()
+                        .notIn(!excludedMovieIds.isEmpty(), "id", excludedMovieIds)
+                        .eq("is_deleted", false)
+        );
+    }
+
+    private double calculateScore(Movies movie, UserPreference preference) {
+        double score = 0;
+
+        // 1. 类型匹配度（权重40%）
+        long genreMatch = Arrays.stream(movie.getGenre().split(","))
+                .map(String::trim)
+                .filter(preference.getFavoriteGenres()::contains)
+                .count();
+        score += genreMatch * 40;
+
+        // 2. 导演匹配（权重20%）
+        if (preference.getFavoriteDirectors().contains(movie.getDirector())) {
+            score += 20;
+        }
+
+        // 3. 电影评分（权重20%）
+        if (movie.getRating() != null) {
+            score += movie.getRating().doubleValue() * 2;
+        }
+
+        // 4. 电影热度（权重20%）
+        if (movie.getViewCount() != null) {
+            score += Math.log10(movie.getViewCount() + 1) * 2;
+        }
+
+        return score;
+    }
+
+    // --- 辅助类 ---
+    @Data
+    private static class UserPreference {
+        private Set<String> favoriteGenres;
+        private Set<String> favoriteDirectors;
+    }
+
+    @Data
+    @AllArgsConstructor
+    private static class ScoredMovie {
+        private Movies movie;
+        private double score;
     }
     @Override
     public Page<Movies> searchMovies(Page<Movies> page, String keyword) {

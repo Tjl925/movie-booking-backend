@@ -1,9 +1,11 @@
 package com.example.movie_booking_backend.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.movie_booking_backend.common.JsonResponse;
 import com.example.movie_booking_backend.model.domain.Movies;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.movie_booking_backend.model.dto.MovieDTO;
+import com.example.movie_booking_backend.model.dto.ratingDTO;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -106,11 +108,15 @@ public interface IMoviesService extends IService<Movies> {
      */
     int updateMoviesByRegion(String oldRegion, String newRegion);
 
-    List<Movies> getTop10Movies();
+    List<Movies> getTop5Movies();
 
     Page<Movies> searchMovies(Page<Movies> page, String keyword);
 
     List<Movies> getRecommendedMovies(Long movieId, Integer limit);
 
     List<Movies> getBestBoxOfficeMovies();
+
+    JsonResponse<String> rateMovie(ratingDTO dto);
+
+    List<Movies> getRecommendMovies(Long userId);
 }
