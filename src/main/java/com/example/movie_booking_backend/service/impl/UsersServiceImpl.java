@@ -3,6 +3,7 @@ package com.example.movie_booking_backend.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.movie_booking_backend.common.JsonResponse;
 import com.example.movie_booking_backend.common.exception.BusinessException;
 import com.example.movie_booking_backend.common.utils.JwtUtils;
 import com.example.movie_booking_backend.mapper.RolesMapper;
@@ -15,6 +16,7 @@ import com.example.movie_booking_backend.model.vo.QQBindVO;
 import com.example.movie_booking_backend.model.vo.UserVO;
 import com.example.movie_booking_backend.service.IUsersService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.movie_booking_backend.service.VerificationCodeService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 // 移除PasswordEncoder导入
@@ -51,6 +53,8 @@ public class UsersServiceImpl extends ServiceImpl<UsersMapper, Users> implements
     @Autowired
     private JwtUtils jwtUtils;
 
+    @Autowired
+    private VerificationCodeService verificationCodeService;
     @Override
     public Page<UserVO> listUsers(Page<Users> page, String username, String email, String status) {
         QueryWrapper<Users> queryWrapper = new QueryWrapper<>();
@@ -175,7 +179,18 @@ public class UsersServiceImpl extends ServiceImpl<UsersMapper, Users> implements
         }
         if (updateDTO.getEmail() != null) {
             validateEmail(updateDTO.getEmail(), id); // 传入当前用户ID
-            user.setEmail(updateDTO.getEmail());
+            boolean isValid = verificationCodeService.verifyCode(
+                    updateDTO.getEmail(),
+                    updateDTO.getCode()
+            );
+
+            if (isValid) {
+                verificationCodeService.removeCode(updateDTO.getEmail());
+                user.setEmail(updateDTO.getEmail());
+            } else {
+                throw new RuntimeException("验证码错误或已过期");
+            }
+
         }
         if (updateDTO.getPhone() != null) {
             validatePhone(updateDTO.getPhone(), id); // 传入当前用户ID
@@ -429,6 +444,24 @@ public class UsersServiceImpl extends ServiceImpl<UsersMapper, Users> implements
         // 7. 返回绑定成功信息
         return AuthResultVO.bound(user,
                 jwtUtils.generateToken(user.getUsername(), user.getId(), user.getRoleId().toString()));
+    }
+    @Override
+    public String getPasswordByEmail(String email) {
+        // 1. 验证邮箱格式
+        if (email == null || !email.matches("^[\\w-]+(\\.[\\w-]+)*@[\\w-]+(\\.[\\w-]+)+$")) {
+            throw new BusinessException("邮箱格式不正确");
+        }
+        // 2. 查询用户
+        Users user = lambdaQuery()
+                .eq(Users::getEmail, email)
+                .eq(Users::getDeleted, false)
+                .one();
+
+        // 3. 检查用户是否存在
+        if (user == null) {
+            throw new BusinessException("该邮箱未注册");
+        }
+        return user.getPassword();
     }
 
 }

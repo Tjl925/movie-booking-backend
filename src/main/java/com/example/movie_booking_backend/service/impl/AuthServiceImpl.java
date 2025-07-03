@@ -172,4 +172,56 @@ public class AuthServiceImpl implements IAuthService {
         System.out.println("退出成功");
         // 简单实现，直接返回，不做处理
     }
+
+    @Override
+    public String validate(RegisterDTO registerDTO) {
+        if (!registerDTO.getPassword().equals(registerDTO.getConfirmPassword())) {
+            return "两次输入的密码不一致";
+        }
+
+        // 检查用户名是否已存在
+        QueryWrapper<Users> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("username", registerDTO.getUsername())
+                .eq("is_deleted", false);
+        if (usersMapper.selectCount(queryWrapper) > 0) {
+            return "用户名已存在";
+        }
+
+        // 检查邮箱是否已存在
+        if (registerDTO.getEmail() != null && !registerDTO.getEmail().isEmpty()) {
+            queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("email", registerDTO.getEmail())
+                    .eq("is_deleted", false);
+            if (usersMapper.selectCount(queryWrapper) > 0) {
+                return "邮箱已被注册";
+            }
+        }
+
+        // 检查手机号是否已存在
+        if (registerDTO.getPhone() != null && !registerDTO.getPhone().isEmpty()) {
+            queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("phone", registerDTO.getPhone())
+                    .eq("is_deleted", false);
+            if (usersMapper.selectCount(queryWrapper) > 0) {
+                return "手机号已被注册";
+            }
+        }
+
+        // 获取普通用户角色ID
+        QueryWrapper<Roles> roleQuery = new QueryWrapper<>();
+        roleQuery.eq("name", "USER");
+        Roles userRole = rolesMapper.selectOne(roleQuery);
+        if (userRole == null) {
+            throw new BusinessException("系统错误：用户角色不存在");
+        }
+        if (StringUtils.isNotBlank(registerDTO.getOpenId())) {
+            queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("open_id", registerDTO.getOpenId())
+                    .eq("is_deleted", false);
+            if (usersMapper.selectCount(queryWrapper) > 0) {
+                return "该QQ账号已绑定其他用户";
+            }
+        }
+        return "true";
+    }
 }

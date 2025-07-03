@@ -23,6 +23,9 @@ public class UserProfileUpdateDTO {
 
     @ApiModelProperty(value = "头像URL（前端上传后自动更新，用户不能直接修改）", example = "/avatar/user123.jpg")
     private String avatar; // 由后端更新，前端只传文件
+
+    @ApiModelProperty(value = "邮箱验证码", example = "62542")
+    private String code; // 由后端更新，前端只传文件
 }
 
 

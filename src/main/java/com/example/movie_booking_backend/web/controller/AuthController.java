@@ -34,6 +34,13 @@ public class AuthController {
         return JsonResponse.success(response, "注册成功");
     }
 
+    @ApiOperation("用户注册")
+    @PostMapping("/validate")
+    public JsonResponse<String> validate(@Valid @RequestBody RegisterDTO registerDTO) {
+        return JsonResponse.success( authService.validate(registerDTO));
+    }
+
+
     @ApiOperation("用户登出")
     @PostMapping("/logout")
     public JsonResponse<String> logout(@RequestHeader("Authorization") String token) {
@@ -44,4 +51,6 @@ public class AuthController {
         authService.logout(token);
         return JsonResponse.successMessage("登出成功");
     }
+
+
 }

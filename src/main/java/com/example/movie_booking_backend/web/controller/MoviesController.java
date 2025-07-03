@@ -199,7 +199,7 @@ public class MoviesController {
         int count = moviesService.updateMoviesByRegion(oldRegion, newRegion);
         return JsonResponse.success(null, "成功更新 " + count + " 部电影的区域");
     }
-    @GetMapping("public/top10")
+    @GetMapping("public/top5")
     public JsonResponse<List<Movies>> getTop5Movies(){
         return JsonResponse.success(moviesService.getTop5Movies());
     }
