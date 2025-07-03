@@ -291,7 +291,7 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
     @Override
     public SessionVO getSessionDetails(Long sessionId) {
         MovieSessions session = this.getById(sessionId);
-        if (session == null || session.getDeleted()) throw new BusinessException("场次不存在");
+        if (session == null) throw new BusinessException("场次不存在");
         return mapToSessionVO(session);
     }
 

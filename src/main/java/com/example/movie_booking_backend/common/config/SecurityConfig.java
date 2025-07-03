@@ -64,6 +64,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/qq/callback").permitAll()
                         .requestMatchers("/api/bind-qq").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/email/**").permitAll()
                         .requestMatchers("/api/movies/public/**").permitAll()
                         .requestMatchers("/api/sessions/public/**").permitAll()
                         .requestMatchers("/api/users/**").permitAll()

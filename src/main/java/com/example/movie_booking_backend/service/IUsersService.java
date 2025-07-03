@@ -1,5 +1,6 @@
 package com.example.movie_booking_backend.service;
 
+import com.example.movie_booking_backend.common.exception.BusinessException;
 import com.example.movie_booking_backend.model.domain.Users;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -36,4 +37,5 @@ public interface IUsersService extends IService<Users> {
 
     AuthResultVO checkQQBind(String openId, String nickname, String avatar);
     AuthResultVO bindQQAccount(BindRequestDTO request);
+    String getPasswordByEmail(String email) throws BusinessException;
 }

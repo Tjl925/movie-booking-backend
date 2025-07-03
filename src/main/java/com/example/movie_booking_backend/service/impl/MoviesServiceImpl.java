@@ -229,10 +229,10 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
     private MoviesMapper moviesMapper;
 
     @Override
-    public List<Movies> getTop10Movies() {
+    public List<Movies> getTop5Movies() {
         QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
         queryWrapper.orderByDesc("rating")  // 按评分降序
-                .last("LIMIT 10");      // 限制10条
+                .last("LIMIT 5");      // 限制5条
 
         return moviesMapper.selectList(queryWrapper);
     }
