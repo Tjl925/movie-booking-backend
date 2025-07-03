@@ -3,15 +3,11 @@ package com.example.movie_booking_backend.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.example.movie_booking_backend.common.JsonResponse;
 import com.example.movie_booking_backend.common.exception.BusinessException;
 import com.example.movie_booking_backend.mapper.*;
 import com.example.movie_booking_backend.model.domain.*;
-import com.example.movie_booking_backend.model.dto.SeatSelectionDTO;
-import com.example.movie_booking_backend.model.dto.SeatStatusUpdateDTO;
 import com.example.movie_booking_backend.model.dto.SessionDTO;
 import com.example.movie_booking_backend.model.vo.*;
-import com.example.movie_booking_backend.service.IHallsService;
 import com.example.movie_booking_backend.service.IMovieSessionsService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.movie_booking_backend.service.ISeatsService;
@@ -22,11 +18,11 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -45,24 +41,25 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
 
     @Autowired
     private MoviesMapper moviesMapper;
+
     @Autowired
     private SeatsMapper seatsMapper;
+
     @Autowired
     private HallsMapper hallsMapper;
 
     @Autowired
     private ISeatsService seatsService;
+
     @Autowired
     private ISeatsSessionsService seatsSessionsService;
 
     @Autowired
-    private HallsServiceImpl hallsService;
-
-    @Autowired
-    private OrderItemsMapper orderItemsMapper;
+    private OrdersMapper ordersMapper;
 
     @Autowired
     private MovieSessionsMapper movieSessionsMapper;
+
     @Autowired
     private SeatsSessionsMapper seatsSessionsMapper;
 
@@ -155,8 +152,9 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
 
         // 检查影厅是否被修改
         boolean isHallChanged = !session.getHallId().equals(sessionDTO.getHallId());
+        boolean isSessionTimeChanged = !session.getSessionTime().equals(startTime);
 
-        if (isHallChanged) {
+        if (isHallChanged || isSessionTimeChanged) {
             // 如果影厅被修改，检查是否有已预订的座位
             List<SeatsSessions> bookedSeats = seatsSessionsMapper.selectList(
                     new QueryWrapper<SeatsSessions>()
@@ -223,18 +221,18 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
     @Override
     @Transactional
     public void deleteSession(Long sessionId) {
-        // 1. 校验场次是否存在且未删除
+        // 校验场次是否存在且未删除
         MovieSessions session = this.getById(sessionId);
         if (session == null || session.getDeleted()) {
             throw new BusinessException("场次不存在或已被删除");
         }
 
-        // 2. 检查场次是否已开始
+        // 检查场次是否已开始
         if (session.getSessionTime().isBefore(LocalDateTime.now())) {
             throw new BusinessException("不能删除已开始或已结束的场次");
         }
 
-        // 3. 检查是否有已预订的座位
+        // 检查是否有已预订的座位
         List<SeatsSessions> bookedSeats = seatsSessionsMapper.selectList(
                 new QueryWrapper<SeatsSessions>()
                         .eq("session_id", sessionId)
@@ -245,23 +243,12 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
             throw new BusinessException("该场次已有座位被预订，无法删除");
         }
 
-//        // 4. 检查是否有未完成的订单（可选，根据业务需求）
-//        List<Orders> activeOrders = OrdersMapper.selectList(
-//                new QueryWrapper<Orders>()
-//                        .eq("session_id", sessionId)
-//                        .notIn("status", Arrays.asList("CANCELLED", "COMPLETED"))
-//                        .eq("is_deleted", false)
-//        );
-//        if (!activeOrders.isEmpty()) {
-//            throw new BusinessException("该场次存在未完成的订单，无法删除");
-//        }
-
-        // 5. 逻辑删除场次
+        // 逻辑删除场次
         session.setDeleted(true)
                 .setUpdatedAt(LocalDateTime.now());
         this.updateById(session);
 
-        // 6. 逻辑删除关联的座位记录（可选）
+        // 逻辑删除关联的座位记录
         seatsSessionsMapper.update(
                 null,
                 new UpdateWrapper<SeatsSessions>()
@@ -393,7 +380,7 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
 
         // 过滤掉已过期的场次（当前时间之前的）
         return sessions.stream()
-                .filter(session -> session.getSessionTime().isAfter(now.minusMinutes(1))) // 减去1分钟避免边界问题
+                .filter(session -> session.getSessionTime().isAfter(now)) // 减去1分钟避免边界问题
                 .collect(Collectors.toList());
     }
 
@@ -528,8 +515,8 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
             }
         }
 
-        // 按开始时间降序排序
-        queryWrapper.orderByDesc("session_time");
+        // 按开始时间升序排序
+        queryWrapper.orderByAsc("session_time");
 
         // 分页查询
         Page<MovieSessions> pageParam = new Page<>(page, size);
@@ -613,6 +600,59 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
         return result;
     }
 
+    @Override
+    @Transactional
+    public Integer analyzeSession() {
+        LocalDate today = LocalDate.now();
+        LocalDateTime startOfDay = today.atStartOfDay();
+        LocalDateTime endOfDay = today.plusDays(1).atStartOfDay();
 
+        // 查询session_time和end_time都在今天的场次数
+        QueryWrapper<MovieSessions> queryWrapper = new QueryWrapper<>();
+        queryWrapper.ge("session_time", startOfDay)
+                .lt("session_time", endOfDay)
+                .ge("end_time", startOfDay)
+                .lt("end_time", endOfDay);
+
+        return Math.toIntExact(this.count(queryWrapper));
+    }
+
+    @Override
+    @Transactional
+    public Object analyzeSessionBoxOffice() {
+        // 获取今天的开始和结束时间
+        LocalDate today = LocalDate.now();
+        LocalDateTime startOfDay = today.atStartOfDay();
+        LocalDateTime endOfDay = today.plusDays(1).atStartOfDay();
+        LocalDateTime currentTime = LocalDateTime.now();
+
+        // 查询今天所有已结束场次的ID
+        List<Long> sessionIds = movieSessionsMapper.selectList(
+                new QueryWrapper<MovieSessions>()
+                        .ge("session_time", startOfDay)
+                        .lt("session_time", endOfDay)
+                        .ge("end_time", startOfDay)
+                        .lt("end_time", currentTime)
+                        .select("id")
+        ).stream().map(MovieSessions::getId).collect(Collectors.toList());
+
+        if (sessionIds.isEmpty()) {
+            return 0.0; // 没有场次，返回0
+        }
+
+        // 查询所有已完成的订单
+        List<Orders> completedOrders = ordersMapper.selectList(
+                new QueryWrapper<Orders>()
+                        .in("session_id", sessionIds)
+                        .eq("status", "COMPLETED")
+        );
+
+        // 返回总票房
+        return completedOrders.stream()
+                .map(Orders::getTotalAmount)
+                .filter(amount -> amount != null)
+                .mapToDouble(BigDecimal::doubleValue)
+                .sum();
+    }
 }
 

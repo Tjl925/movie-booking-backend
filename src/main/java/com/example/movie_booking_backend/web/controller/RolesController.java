@@ -1,5 +1,6 @@
 package com.example.movie_booking_backend.web.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.movie_booking_backend.common.JsonResponse;
 import com.example.movie_booking_backend.model.domain.Roles;
 import com.example.movie_booking_backend.model.dto.RoleDTO;
@@ -36,7 +37,7 @@ public class RolesController {
     @GetMapping
     public JsonResponse<List<Roles>> getAllRoles() {
         return JsonResponse.success(rolesService.list(
-                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Roles>().eq("is_deleted", false)
+                new QueryWrapper<Roles>().eq("is_deleted", false)
         ));
     }
 

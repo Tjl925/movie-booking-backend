@@ -65,16 +65,14 @@ public class SecurityConfig {
                         .requestMatchers("/api/bind-qq").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/email/**").permitAll()
-                        .requestMatchers("/api/movies/public/**").permitAll()
-                        .requestMatchers("/api/sessions/public/**").permitAll()
+                        .requestMatchers("/api/movies/**").permitAll()
+                        .requestMatchers("/api/sessions/**").permitAll()
                         .requestMatchers("/api/users/**").permitAll()
+                        .requestMatchers("/api/orders/**").permitAll()
                         .requestMatchers("/api/alipay/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v2/api-docs", "/swagger-resources/**").permitAll()
                         .requestMatchers("/error").permitAll()
-                        // 需要特定角色的接口
-                        .requestMatchers("/api/user/**").hasAnyRole("ADMIN", "SUPERADMIN")
-                        .requestMatchers("/api/movies/**").hasAnyRole("ADMIN", "SUPERADMIN")
                         // 其他接口需要认证
                         .anyRequest().authenticated()
                 );

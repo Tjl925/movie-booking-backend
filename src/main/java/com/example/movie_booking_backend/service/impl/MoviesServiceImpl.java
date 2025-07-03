@@ -240,7 +240,7 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
     @Override
     public List<Movies> getBestBoxOfficeMovies() {
         QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
-        queryWrapper.orderByDesc("box_office")  // 按票房降序
+        queryWrapper.eq("status", "NOW_SHOWING").orderByDesc("box_office")  // 按票房降序
                 .last("LIMIT 10");      // 限制10条
         return moviesMapper.selectList(queryWrapper);
     }
@@ -261,14 +261,14 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
             if (order.getIsRated()) {
                 return JsonResponse.failure("该订单已评分");
             }
-            if (!order.getStatus().equals("PAID")) {
-                return JsonResponse.failure("只有已支付的订单才能评分");
+            if (!order.getStatus().equals("COMPLETED")) {
+                return JsonResponse.failure("只有已完成的订单才能评分");
             }
 
             // 3. 获取电影并验证
             Movies movie = this.getById(dto.getMovieId());
             if (movie == null || movie.getDeleted()) {
-                return JsonResponse.failure("电影不存在或已下架");
+                return JsonResponse.failure("电影不存在");
             }
 
             // 4. 计算新评分
@@ -302,7 +302,7 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
                 .filter(order -> "PAID".equals(order.getStatus()) || "COMPLETED".equals(order.getStatus()))
                 .map(order -> order.getSession().getMovie())
                 .filter(Objects::nonNull)
-                .distinct() // 替代原来的Set去重
+                .distinct()
                 .collect(Collectors.toList());
 
         // 2. 获取候选电影（排除已看过的）
@@ -767,5 +767,23 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
         this.updateBatchById(moviesList);
 
         return moviesList.size();
+    }
+
+    @Override
+    @Transactional
+    public Map<String, Object> analyzeMovie() {
+        Map<String, Object> map = new HashMap<>();
+        QueryWrapper<Movies> queryWrapper1 = new QueryWrapper<>();
+        queryWrapper1.in("status", Arrays.asList("NOW_SHOWING", "UPCOMING"));
+        // 查询总数
+        Long count = moviesMapper.selectCount(queryWrapper1);
+        map.put("movieCount", count);
+        // 查询票房总和
+        QueryWrapper<Movies> queryWrapper2 = new QueryWrapper<>();
+        queryWrapper2.select("SUM(box_office) as totalBoxOffice");
+        List<Map<String, Object>> result = moviesMapper.selectMaps(queryWrapper2);
+        Object totalBoxOffice = result.isEmpty() ? 0 : result.get(0).get("totalBoxOffice");
+        map.put("totalBoxOffice", totalBoxOffice == null ? 0 : totalBoxOffice);
+        return map;
     }
 }

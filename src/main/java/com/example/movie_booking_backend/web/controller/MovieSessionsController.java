@@ -96,13 +96,6 @@ public class MovieSessionsController {
         return JsonResponse.success(sessionVO);
     }
 
-//    @ApiOperation("【前台】获取某场次的座位图及状态")
-//    @GetMapping("/public/{id}/seats")
-//    public JsonResponse<List<SeatVO>> getSeatStatusForSession(@PathVariable Long id) {
-//        List<SeatVO> seats = movieSessionsService.getSeatStatusForSession(id);
-//        return JsonResponse.success(seats);
-//    }
-
     @ApiOperation("【前台】获取某电影的所有场次完整信息")
     @GetMapping("/public/movie/{movieId}/session-infos")
     public JsonResponse<List<SessionInfoVO>> getSessionInfos(
@@ -118,12 +111,6 @@ public class MovieSessionsController {
         return JsonResponse.success(seats);
     }
 
-//    @ApiOperation("【前台】更新单个座位状态")
-//    @PostMapping("/public/update-seat-status")
-//    public JsonResponse<String> updateSeatStatus(@RequestBody SeatSelectionDTO dto) {
-//        movieSessionsService.updateSeatStatus(dto);
-//        return JsonResponse.successMessage("座位状态更新成功");
-//    }
 
     @ApiOperation("【后台】获取场次列表")
     @GetMapping
@@ -135,13 +122,16 @@ public class MovieSessionsController {
         return JsonResponse.success(pages);
     }
 
-//    @ApiOperation("【前台】获取电影的场次列表")
-//    @GetMapping("/movie/{movieId}")
-//    public JsonResponse<List<SessionVO>> getMovieSessionList(
-//            @PathVariable Long movieId,
-//            @RequestParam(value = "status", required = false) String status) {
-//        List<SessionVO> sessions = movieSessionsService.getSessionsByMovieId(movieId, status);
-//        return JsonResponse.success(sessions);
-//    }
+    @ApiOperation("获取今日场次数")
+    @GetMapping("/analyze-session")
+    public JsonResponse<Integer> analyzeSession(){
+        return JsonResponse.success(movieSessionsService.analyzeSession());
+    }
+
+    @ApiOperation("获取今日票房")
+    @GetMapping("/analyze-session-box-office")
+    public JsonResponse<Object> analyzeSessionBoxOffice(){
+        return JsonResponse.success(movieSessionsService.analyzeSessionBoxOffice());
+    }
 }
 

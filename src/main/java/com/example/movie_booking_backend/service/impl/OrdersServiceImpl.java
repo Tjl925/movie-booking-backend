@@ -206,6 +206,7 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders> impleme
 
     @Override
     public Page<OrderVO> getUserOrders(Page<Orders> page, Long userId) {
+        System.out.println("查询个人订单" + userId);
         Page<Orders> orderPage = this.page(page, new QueryWrapper<Orders>().eq("user_id", userId).ne("status", "CANCELLED").eq("is_deleted", false).orderByDesc("created_at"));
 
         Page<OrderVO> voPage = new Page<>();
@@ -300,6 +301,7 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders> impleme
     }
 
     private OrderVO buildOrderVO(Orders order) {
+        System.out.println("订单：" + order.toString());
         OrderVO vo = new OrderVO();
         BeanUtils.copyProperties(order, vo);
         vo.setTotalAmount(order.getTotalAmount().doubleValue());

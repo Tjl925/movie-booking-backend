@@ -199,6 +199,7 @@ public class MoviesController {
         int count = moviesService.updateMoviesByRegion(oldRegion, newRegion);
         return JsonResponse.success(null, "成功更新 " + count + " 部电影的区域");
     }
+
     @GetMapping("public/top5")
     public JsonResponse<List<Movies>> getTop5Movies(){
         return JsonResponse.success(moviesService.getTop5Movies());
@@ -238,6 +239,12 @@ public class MoviesController {
     public JsonResponse<List<Movies>> getRecommendMovies(@PathVariable Long userId) {
         List<Movies> recommendations = moviesService.getRecommendMovies(userId);
         return JsonResponse.success(recommendations);
+    }
 
-}}
+    @ApiOperation("获取电影数量和总票房")
+    @GetMapping("/analyze-movie")
+    public JsonResponse<Map<String, Object>> analyzeMovie(){
+        return JsonResponse.success(moviesService.analyzeMovie());
+        }
+}
 

@@ -4,7 +4,7 @@ CREATE DATABASE IF NOT EXISTS movie_booking_system DEFAULT CHARACTER SET utf8mb4
 
 USE movie_booking_system;
 
--- 删除已存在的表（如果存在）
+-- 删除已存在的表
 DROP TABLE IF EXISTS payments;
 DROP TABLE IF EXISTS order_items;
 DROP TABLE IF EXISTS orders;
@@ -70,7 +70,9 @@ CREATE TABLE role_permissions
     UNIQUE KEY uk_role_permission (role_id, permission_id),
     INDEX idx_role_id (role_id),
     INDEX idx_permission_id (permission_id),
-    INDEX idx_is_deleted (is_deleted)
+    INDEX idx_is_deleted (is_deleted),
+    CONSTRAINT fk_role_permissions_role_id FOREIGN KEY (role_id) REFERENCES roles (id),
+    CONSTRAINT fk_role_permissions_permission_id FOREIGN KEY (permission_id) REFERENCES permissions (id)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci COMMENT ='角色权限关联表';
@@ -83,6 +85,7 @@ CREATE TABLE users
     password    VARCHAR(255) NOT NULL COMMENT '密码',
     email       VARCHAR(100) UNIQUE COMMENT '邮箱',
     phone       VARCHAR(20) UNIQUE COMMENT '手机号',
+    open_id     VARCHAR(100) UNIQUE COMMENT 'QID',
     avatar      VARCHAR(255) COMMENT '头像URL',
     role_id     BIGINT       NOT NULL COMMENT '角色ID',
     status      ENUM ('ACTIVE', 'INACTIVE', 'BANNED') DEFAULT 'ACTIVE' COMMENT '状态',
@@ -97,7 +100,8 @@ CREATE TABLE users
     INDEX idx_role_id (role_id),
     INDEX idx_status (status),
     INDEX idx_is_deleted (is_deleted),
-    INDEX idx_created_at (created_at)
+    INDEX idx_created_at (created_at),
+    CONSTRAINT fk_users_role_id FOREIGN KEY (role_id) REFERENCES roles (id)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci COMMENT ='用户表';
@@ -158,6 +162,7 @@ CREATE TABLE movies
     rating           DECIMAL(3, 1)                             DEFAULT 0.0 COMMENT '评分',
     rating_count     INT                                       DEFAULT 0 COMMENT '评分人数',
     view_count       INT                                       DEFAULT 0 COMMENT '观看次数',
+    box_office       DECIMAL(15, 2)                            DEFAULT 0.00 COMMENT '票房',
     language         VARCHAR(50) COMMENT '语言',
     country          VARCHAR(50) COMMENT '国家/地区',
     created_at       TIMESTAMP                                 DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -214,7 +219,7 @@ CREATE TABLE seats
     INDEX idx_hall_id (hall_id),
     INDEX idx_seat_type (seat_type),
     INDEX idx_is_deleted (is_deleted),
-    CONSTRAINT fk_seat_hall FOREIGN KEY (hall_id) REFERENCES halls (id)
+    CONSTRAINT fk_seats_hall_id FOREIGN KEY (hall_id) REFERENCES halls (id)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci COMMENT ='座位表';
@@ -237,8 +242,8 @@ CREATE TABLE movie_sessions
     INDEX idx_session_time (session_time),
     INDEX idx_movie_time (movie_id, session_time),
     INDEX idx_is_deleted (is_deleted),
-    CONSTRAINT fk_session_movie FOREIGN KEY (movie_id) REFERENCES movies (id),
-    CONSTRAINT fk_session_hall FOREIGN KEY (hall_id) REFERENCES halls (id)
+    CONSTRAINT fk_movie_sessions_movie_id FOREIGN KEY (movie_id) REFERENCES movies (id),
+CONSTRAINT fk_movie_sessions_hall_id FOREIGN KEY (hall_id) REFERENCES halls (id)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci COMMENT ='电影场次表';
@@ -278,19 +283,17 @@ CREATE TABLE orders
     status         ENUM ('PENDING', 'PAID', 'CANCELLED', 'REFUNDED', 'COMPLETED') DEFAULT 'PENDING' COMMENT '订单状态',
     payment_method ENUM ('ALIPAY', 'WECHAT', 'BANK_CARD', 'CASH') COMMENT '支付方式',
     payment_time   DATETIME COMMENT '支付时间',
-    cancel_time    DATETIME COMMENT '取消时间',
-    cancel_reason  VARCHAR(255) COMMENT '取消原因',
-    created_at     TIMESTAMP                                                      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    updated_at     TIMESTAMP                                                      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    is_deleted     TINYINT(1)                                                     DEFAULT 0 COMMENT '是否删除',
+    created_at     TIMESTAMP      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at     TIMESTAMP      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    is_deleted     TINYINT(1)     DEFAULT 0 COMMENT '是否删除',
     INDEX idx_order_number (order_number),
     INDEX idx_user_id (user_id),
     INDEX idx_session_id (session_id),
     INDEX idx_status (status),
     INDEX idx_created_at (created_at),
     INDEX idx_is_deleted (is_deleted),
-    CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users (id),
-    CONSTRAINT fk_orders_session FOREIGN KEY (session_id) REFERENCES movie_sessions (id)
+    CONSTRAINT fk_orders_user_id FOREIGN KEY (user_id) REFERENCES users (id),
+    CONSTRAINT fk_orders_session_id FOREIGN KEY (session_id) REFERENCES movie_sessions (id)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci COMMENT ='订单表';
@@ -307,8 +310,8 @@ CREATE TABLE order_items
     is_deleted  TINYINT(1) DEFAULT 0 COMMENT '是否删除',
     INDEX idx_order_id (order_id),
     INDEX idx_is_deleted (is_deleted),
-    CONSTRAINT fk_orderitem_order FOREIGN KEY (order_id) REFERENCES orders (id),
-    CONSTRAINT fk_orderitem_seat FOREIGN KEY (seat_id) REFERENCES seats (id)
+    CONSTRAINT fk_order_item_order FOREIGN KEY (order_id) REFERENCES orders (id),
+    CONSTRAINT fk_order_item_seat FOREIGN KEY (seat_id) REFERENCES seats (id)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci COMMENT ='订单项表';
@@ -375,31 +378,104 @@ CREATE TABLE operation_logs
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci COMMENT ='操作日志表';
 
--- ==================== 外键约束 ====================
+-- ==================== 电影状态自动更新触发器 ====================
 
--- 添加外键约束
-ALTER TABLE users
-    ADD CONSTRAINT fk_users_role_id FOREIGN KEY (role_id) REFERENCES roles (id);
-ALTER TABLE role_permissions
-    ADD CONSTRAINT fk_role_permissions_role_id FOREIGN KEY (role_id) REFERENCES roles (id);
-ALTER TABLE role_permissions
-    ADD CONSTRAINT fk_role_permissions_permission_id FOREIGN KEY (permission_id) REFERENCES permissions (id);
-ALTER TABLE seats
-    ADD CONSTRAINT fk_seats_hall_id FOREIGN KEY (hall_id) REFERENCES halls (id);
-ALTER TABLE movie_sessions
-    ADD CONSTRAINT fk_movie_sessions_movie_id FOREIGN KEY (movie_id) REFERENCES movies (id);
-ALTER TABLE movie_sessions
-    ADD CONSTRAINT fk_movie_sessions_hall_id FOREIGN KEY (hall_id) REFERENCES halls (id);
-ALTER TABLE orders
-    ADD CONSTRAINT fk_orders_user_id FOREIGN KEY (user_id) REFERENCES users (id);
-ALTER TABLE orders
-    ADD CONSTRAINT fk_orders_session_id FOREIGN KEY (session_id) REFERENCES movie_sessions (id);
-ALTER TABLE order_items
-    ADD CONSTRAINT fk_order_items_order_id FOREIGN KEY (order_id) REFERENCES orders (id);
-ALTER TABLE payments
-    ADD CONSTRAINT fk_payments_order_id FOREIGN KEY (order_id) REFERENCES orders (id);
-ALTER TABLE payments
-    ADD CONSTRAINT fk_payments_user_id FOREIGN KEY (user_id) REFERENCES users (id);
+-- 创建事件调度器，每天检查并更新电影状态
+SET GLOBAL event_scheduler = ON;
+
+-- 删除已存在的事件（如果存在）
+DROP EVENT IF EXISTS update_movie_status_event;
+DROP EVENT IF EXISTS update_session_orders_event;
+DROP EVENT IF EXISTS process_ended_sessions_event;
+
+-- 创建每天执行一次的事件，用于更新电影状态
+CREATE EVENT update_movie_status_event
+ON SCHEDULE EVERY 1 DAY
+STARTS TIMESTAMP(CURRENT_DATE, '00:00:00')
+DO
+  BEGIN
+    -- 将状态从 UPCOMING 更新为 NOW_SHOWING（当前日期 >= 上映日期）
+    UPDATE movies 
+    SET status = 'NOW_SHOWING', updated_at = NOW() 
+    WHERE status = 'UPCOMING' 
+      AND release_date IS NOT NULL 
+      AND release_date <= CURDATE() 
+      AND is_deleted = 0;
+    
+    -- 将状态从 NOW_SHOWING 更新为 ENDED（当前日期 >= 下映日期）
+    UPDATE movies 
+    SET status = 'ENDED', updated_at = NOW() 
+    WHERE status = 'NOW_SHOWING' 
+      AND end_date IS NOT NULL 
+      AND end_date <= CURDATE() 
+      AND is_deleted = 0;
+  END;
+
+-- 创建场次开始时订单状态更新事件（每5分钟执行一次）
+CREATE EVENT update_session_orders_event
+ON SCHEDULE EVERY 5 MINUTE
+DO
+  BEGIN
+    -- 将状态从 PAID 更新为 COMPLETED（当前时间 >= 场次开始时间）
+    UPDATE orders o
+    JOIN movie_sessions ms ON o.session_id = ms.id
+    SET o.status = 'COMPLETED', o.updated_at = NOW()
+    WHERE o.status = 'PAID'
+      AND ms.session_time <= NOW()
+      AND o.is_deleted = 0
+      AND ms.is_deleted = 0;
+  END;
+
+-- 创建场次结束时数据处理事件（每5分钟执行一次）
+CREATE EVENT process_ended_sessions_event
+ON SCHEDULE EVERY 5 MINUTE
+DO
+  BEGIN
+    -- 临时表存储需要处理的已结束场次
+    CREATE TEMPORARY TABLE IF NOT EXISTS tmp_ended_sessions (
+      session_id BIGINT PRIMARY KEY,
+      movie_id BIGINT
+    );
+    
+    -- 查找所有已结束但未被删除的场次
+    INSERT INTO tmp_ended_sessions (session_id, movie_id)
+    SELECT ms.id, ms.movie_id
+    FROM movie_sessions ms
+    WHERE ms.end_time <= NOW()
+      AND ms.is_deleted = 0;
+    
+    -- 更新电影票房和观看人数
+    UPDATE movies m
+    JOIN (
+      SELECT tes.movie_id,
+             SUM(o.total_amount) AS box_office_increase,
+             SUM(o.ticket_count) AS view_count_increase
+      FROM tmp_ended_sessions tes
+      JOIN orders o ON tes.session_id = o.session_id
+      WHERE o.status = 'COMPLETED'
+        AND o.is_deleted = 0
+      GROUP BY tes.movie_id
+    ) AS stats ON m.id = stats.movie_id
+    SET m.box_office = m.box_office + stats.box_office_increase,
+        m.view_count = m.view_count + stats.view_count_increase,
+        m.updated_at = NOW()
+    WHERE m.is_deleted = 0;
+    
+    -- 逻辑删除座位场次关联记录
+    UPDATE seats_sessions ss
+    JOIN tmp_ended_sessions tes ON ss.session_id = tes.session_id
+    SET ss.is_deleted = 1, ss.updated_at = NOW()
+    WHERE ss.is_deleted = 0;
+    
+    -- 逻辑删除场次记录
+    UPDATE movie_sessions ms
+    JOIN tmp_ended_sessions tes ON ms.id = tes.session_id
+    SET ms.is_deleted = 1, ms.updated_at = NOW()
+    WHERE ms.is_deleted = 0;
+    
+    -- 删除临时表
+    DROP TEMPORARY TABLE IF EXISTS tmp_ended_sessions;
+  END;
 
 -- ==================== 视图定义 ====================
 
@@ -940,106 +1016,6 @@ WHERE s.hall_id = ms.hall_id
   AND s.is_deleted = 0
   AND ms.is_deleted = 0;
 
--- ==================== 存储过程 ====================
-
--- 创建生成订单号的存储过程
-DELIMITER //
-CREATE PROCEDURE GenerateOrderNumber(OUT order_number VARCHAR(50))
-BEGIN
-    DECLARE current_date_str VARCHAR(8);
-    DECLARE sequence_num INT;
-
-    SET current_date_str = DATE_FORMAT(NOW(), '%Y%m%d');
-
-    -- 获取当天的订单数量
-    SELECT COALESCE(MAX(SUBSTRING(order_number, 9)), 0) + 1
-    INTO sequence_num
-    FROM orders
-    WHERE order_number LIKE CONCAT(current_date_str, '%')
-      AND is_deleted = 0;
-
-    SET order_number = CONCAT(current_date_str, LPAD(sequence_num, 6, '0'));
-END //
-DELIMITER ;
-
--- 创建计算座位价格的存储过程
-DELIMITER //
-CREATE PROCEDURE CalculateSeatPrice(
-    IN p_session_id BIGINT,
-    IN p_seat_number VARCHAR(20),
-    OUT p_price DECIMAL(10, 2)
-)
-BEGIN
-    DECLARE base_price DECIMAL(10, 2);
-    DECLARE hall_price_multiplier DECIMAL(3, 2);
-    DECLARE seat_price_multiplier DECIMAL(3, 2);
-
-    -- 获取电影基础价格
-    SELECT m.base_price
-    INTO base_price
-    FROM movie_sessions ms
-             JOIN movies m ON ms.movie_id = m.id
-    WHERE ms.id = p_session_id
-      AND ms.is_deleted = 0;
-
-    -- 获取影厅价格倍数
-    SELECT h.price_multiplier
-    INTO hall_price_multiplier
-    FROM movie_sessions ms
-             JOIN halls h ON ms.hall_id = h.id
-    WHERE ms.id = p_session_id
-      AND ms.is_deleted = 0;
-
-    -- 获取座位价格倍数
-    SELECT s.price_multiplier
-    INTO seat_price_multiplier
-    FROM movie_sessions ms
-             JOIN seats s ON s.hall_id = ms.hall_id
-    WHERE ms.id = p_session_id
-      AND s.seat_number = p_seat_number
-      AND s.is_deleted = 0;
-
-    SET p_price = base_price * hall_price_multiplier * seat_price_multiplier;
-END //
-DELIMITER ;
-
--- ==================== 触发器 ====================
-
--- 创建订单状态更新触发器
-DELIMITER //
-CREATE TRIGGER tr_orders_status_update
-    AFTER UPDATE
-    ON orders
-    FOR EACH ROW
-BEGIN
-    IF NEW.status != OLD.status THEN
-        INSERT INTO operation_logs (user_id, operation, resource, resource_id, description)
-        VALUES (NEW.user_id,
-                CONCAT('订单状态更新: ', OLD.status, ' -> ', NEW.status),
-                'order',
-                NEW.id,
-                CONCAT('订单号: ', NEW.order_number, ' 状态从 ', OLD.status, ' 更新为 ', NEW.status));
-    END IF;
-END //
-DELIMITER ;
-
--- 创建支付状态更新触发器
-DELIMITER //
-CREATE TRIGGER tr_payments_status_update
-    AFTER UPDATE
-    ON payments
-    FOR EACH ROW
-BEGIN
-    IF NEW.payment_status != OLD.payment_status THEN
-        INSERT INTO operation_logs (user_id, operation, resource, resource_id, description)
-        VALUES (NEW.user_id,
-                CONCAT('支付状态更新: ', OLD.payment_status, ' -> ', NEW.payment_status),
-                'payment',
-                NEW.id,
-                CONCAT('订单ID: ', NEW.order_id, ' 支付状态从 ', OLD.payment_status, ' 更新为 ', NEW.payment_status));
-    END IF;
-END //
-DELIMITER ;
 
 -- ==================== 索引优化 ====================
 
@@ -1061,5 +1037,4 @@ SELECT '- 用户管理（用户、角色、权限）' as module1;
 SELECT '- 电影管理（电影信息、影厅、座位）' as module2;
 SELECT '- 场次管理（电影场次、时间安排）' as module3;
 SELECT '- 订单管理（订单、订单项、支付）' as module4;
-SELECT '- 操作日志（系统操作记录）' as module5;
-SELECT '- 视图和存储过程（数据查询和业务逻辑）' as module6;
+SELECT '- 事件调度器和触发器（数据查询和业务逻辑）' as module5;
