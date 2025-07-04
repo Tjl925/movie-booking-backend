@@ -71,31 +71,7 @@ public class OrdersController {
         OrderVO orderVO = ordersService.getOrderDetails(orderId, userId);
         return JsonResponse.success(orderVO);
     }
-    
-    /**
-     * 查询订单状态
-     * @param id 订单ID
-     * @return 订单状态信息
-     */
-    @ApiOperation("查询订单状态")
-    @GetMapping("/{id}/status")
-    public JsonResponse<Map<String, String>> checkOrderStatus(@PathVariable Long id) {
-        Orders order = ordersService.getOrders(id);
-        if (order == null) {
-            return JsonResponse.failure("订单不存在");
-        }
-        
-        Map<String, String> statusInfo = new HashMap<>();
-        statusInfo.put("status", order.getStatus());
-        return JsonResponse.success(statusInfo);
-    }
-    
-    /**
-     * 管理员获取所有订单
-     * @param current 当前页码
-     * @param size 每页大小
-     * @return 订单列表
-     */
+
     @ApiOperation("管理员获取所有订单")
     @GetMapping("/admin/all")
     public JsonResponse<Page<OrderVO>> getAllOrders(@RequestParam(defaultValue = "1") Integer current,
@@ -103,44 +79,12 @@ public class OrdersController {
         Page<OrderVO> page = ordersService.getAllOrders(new Page<>(current, size));
         return JsonResponse.success(page);
     }
-    @ApiOperation("用户根据用户ID获取所有订单(不分页)")
-    @GetMapping("/user/{userId}/all")
-    public JsonResponse<List<OrderVO>> getAllOrdersByUserId(@PathVariable Long userId) {
-        // 权限验证 - 确保用户只能查看自己的订单
 
-
-        List<OrderVO> orders = ordersService.getAllOrdersByUserId(userId);
-        return JsonResponse.success(orders);
-    }
-    /**
-     * 管理员删除订单
-     * @param id 订单ID
-     * @return 操作结果
-     */
     @ApiOperation("管理员删除订单")
     @DeleteMapping("/admin/{id}")
     public JsonResponse<String> deleteOrder(@PathVariable Long id) {
         ordersService.deleteOrder(id);
         return JsonResponse.successMessage("订单已删除");
     }
-
-    /**
-     * 描述：根据Id 查询
-     *
-     */
-    @RequestMapping(value = "/{id}", method = RequestMethod.GET)
-    @ResponseBody
-    public JsonResponse<Orders> getById(@PathVariable("id") Long id)throws Exception {
-        Orders orders = ordersService.getById(id);
-        return JsonResponse.success(orders);
-    }
-
-    @ApiOperation("查询订单是否已评分")
-    @GetMapping("/{id}/rated")
-    public JsonResponse<Boolean> getOrderRatedStatus(@PathVariable Long id) {
-        Boolean isRated = ordersService.getOrderRatedStatus(id);
-        return JsonResponse.success(isRated);
-    }
-
 }
 

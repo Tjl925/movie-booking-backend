@@ -59,15 +59,6 @@ public class UsersController {
         return JsonResponse.success(vo);
     }
 
-    @ApiOperation("创建用户")
-    @PostMapping
-    public JsonResponse<UserVO> createUser(@Valid @RequestBody UserCreationDTO userCreationDTO) {
-        Users user = usersService.createUser(userCreationDTO);
-        UserVO userVO = new UserVO();
-        BeanUtils.copyProperties(user, userVO);
-        return JsonResponse.success(userVO, "用户创建成功");
-    }
-
     @ApiOperation("更新用户")
     @PutMapping("/{id}")
     public JsonResponse<UserVO> updateUser(@PathVariable Long id, @Valid @RequestBody UserUpdateDTO userUpdateDTO) {
@@ -77,7 +68,7 @@ public class UsersController {
         return JsonResponse.success(userVO, "用户更新成功");
     }
 
-    @ApiOperation("更新用户个人信息（简化版）")
+    @ApiOperation("更新用户个人信息")
     @PostMapping("/profile/{id}")
     public JsonResponse<UserVO> updateUserProfile(
             @PathVariable Long id,

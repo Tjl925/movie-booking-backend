@@ -65,4 +65,8 @@ public interface IMoviesService extends IService<Movies> {
     List<Movies> getRecommendMovies(Long userId);
 
     Map<String, Object> analyzeMovie();
+    
+    List<Map<String, Object>> analyzeGenreBoxOffice();
+    
+    List<Map<String, Object>> analyzeRegionBoxOffice();
 }

@@ -26,17 +26,7 @@ public interface UserGroupsMapper extends BaseMapper<UserGroups> {
     UserGroups selectByIdAndIsDeletedFalse(@Param("id") Long id);
 
     /**
-     * 根据名称查找未删除的用户分组
-     */
-    UserGroups selectByNameAndIsDeletedFalse(@Param("name") String name);
-
-    /**
      * 根据用户ID查找该用户所属的所有分组
      */
     List<UserGroups> selectGroupsByUserId(@Param("userId") Long userId);
-
-    /**
-     * 根据类型查找未删除的用户分组
-     */
-    List<UserGroups> selectByTypeAndIsDeletedFalse(@Param("type") String type);
 }

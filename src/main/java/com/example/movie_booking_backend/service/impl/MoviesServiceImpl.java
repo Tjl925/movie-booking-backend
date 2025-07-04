@@ -10,8 +10,6 @@ import com.example.movie_booking_backend.mapper.MoviesMapper;
 import com.example.movie_booking_backend.model.domain.Orders;
 import com.example.movie_booking_backend.model.dto.MovieDTO;
 import com.example.movie_booking_backend.model.dto.ratingDTO;
-import com.example.movie_booking_backend.model.vo.OrderVO;
-import com.example.movie_booking_backend.service.FileService;
 import com.example.movie_booking_backend.service.IMoviesService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.movie_booking_backend.service.IOrdersService;
@@ -785,5 +783,88 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
         Object totalBoxOffice = result.isEmpty() ? 0 : result.get(0).get("totalBoxOffice");
         map.put("totalBoxOffice", totalBoxOffice == null ? 0 : totalBoxOffice);
         return map;
+    }
+    
+    @Override
+    @Transactional
+    public List<Map<String, Object>> analyzeGenreBoxOffice() {
+        // 查询所有未下架的电影
+        QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("is_deleted", false);
+        List<Movies> moviesList = this.list(queryWrapper);
+        
+        // 统计每种类型的电影数量和票房
+        Map<String, Integer> genreCountMap = new HashMap<>();
+        Map<String, Double> genreBoxOfficeMap = new HashMap<>();
+        
+        for (Movies movie : moviesList) {
+            String genreStr = movie.getGenre();
+            if (genreStr != null && !genreStr.isEmpty()) {
+                // 处理多个类型的情况，以逗号分隔
+                String[] genres = genreStr.split(",");
+                for (String genre : genres) {
+                    genre = genre.trim();
+                    if (!genre.isEmpty()) {
+                        // 更新类型计数
+                        genreCountMap.put(genre, genreCountMap.getOrDefault(genre, 0) + 1);
+                        
+                        // 更新类型票房
+                        Double boxOffice = movie.getBoxOffice() != null ? movie.getBoxOffice().doubleValue() : 0.0;
+                        genreBoxOfficeMap.put(genre, genreBoxOfficeMap.getOrDefault(genre, 0.0) + boxOffice);
+                    }
+                }
+            }
+        }
+        
+        // 转换为返回格式
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : genreCountMap.entrySet()) {
+            String genre = entry.getKey();
+            Map<String, Object> genreMap = new HashMap<>();
+            genreMap.put("name", genre);
+            genreMap.put("movieCount", entry.getValue());
+            genreMap.put("boxOffice", genreBoxOfficeMap.getOrDefault(genre, 0.0));
+            result.add(genreMap);
+        }
+        
+        return result;
+    }
+    
+    @Override
+    @Transactional
+    public List<Map<String, Object>> analyzeRegionBoxOffice() {
+        // 查询所有未下架的电影
+        QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("is_deleted", false);
+        List<Movies> moviesList = this.list(queryWrapper);
+        
+        // 统计每个区域的电影数量和票房
+        Map<String, Integer> regionCountMap = new HashMap<>();
+        Map<String, Double> regionBoxOfficeMap = new HashMap<>();
+        
+        for (Movies movie : moviesList) {
+            String region = movie.getCountry();
+            if (region != null && !region.isEmpty()) {
+                // 更新区域计数
+                regionCountMap.put(region, regionCountMap.getOrDefault(region, 0) + 1);
+                
+                // 更新区域票房
+                Double boxOffice = movie.getBoxOffice() != null ? movie.getBoxOffice().doubleValue() : 0.0;
+                regionBoxOfficeMap.put(region, regionBoxOfficeMap.getOrDefault(region, 0.0) + boxOffice);
+            }
+        }
+        
+        // 转换为返回格式
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : regionCountMap.entrySet()) {
+            String region = entry.getKey();
+            Map<String, Object> regionMap = new HashMap<>();
+            regionMap.put("name", region);
+            regionMap.put("movieCount", entry.getValue());
+            regionMap.put("boxOffice", regionBoxOfficeMap.getOrDefault(region, 0.0));
+            result.add(regionMap);
+        }
+        
+        return result;
     }
 }

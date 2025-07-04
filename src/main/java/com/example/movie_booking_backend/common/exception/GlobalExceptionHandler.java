@@ -11,6 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.NoHandlerFoundException;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -90,6 +91,16 @@ public class GlobalExceptionHandler {
 
 
     /**
+     * 处理请求路径不存在异常
+     */
+    @ExceptionHandler(NoHandlerFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public JsonResponse<String> handleNoHandlerFoundException(NoHandlerFoundException e) {
+        log.warn("请求路径不存在: {}", e.getMessage());
+        return JsonResponse.failure(404, "请求的接口不存在: " + e.getRequestURL());
+    }
+    
+    /**
      * 处理通用异常
      */
     @ExceptionHandler(Exception.class)
@@ -98,4 +109,4 @@ public class GlobalExceptionHandler {
         log.error("系统异常: ", e);
         return JsonResponse.failure("系统内部错误，请联系管理员");
     }
-} 
+}

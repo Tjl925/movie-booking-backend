@@ -23,8 +23,6 @@ public interface IUsersService extends IService<Users> {
 
     Page<UserVO> listUsers(Page<Users> page, String username, String email, String status);
 
-    Users createUser(UserCreationDTO userCreationDTO);
-
     Users updateUser(Long id, UserUpdateDTO userUpdateDTO);
 
     void resetPassword(Long id, String newPassword);

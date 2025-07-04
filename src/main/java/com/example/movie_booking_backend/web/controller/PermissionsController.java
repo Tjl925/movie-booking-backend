@@ -1,16 +1,9 @@
 package com.example.movie_booking_backend.web.controller;
 
-import com.example.movie_booking_backend.common.JsonResponse;
-import com.example.movie_booking_backend.model.domain.Permissions;
-import com.example.movie_booking_backend.service.IPermissionsService;
 import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 
 /**
  *
@@ -26,13 +19,5 @@ import java.util.List;
 @RequestMapping("/api/permissions")
 public class PermissionsController {
 
-    @Autowired
-    private IPermissionsService permissionsService;
-
-    @ApiOperation("获取所有可用权限列表")
-    @GetMapping
-    public JsonResponse<List<Permissions>> getAllPermissions() {
-        return JsonResponse.success(permissionsService.list());
-    }
 }
 

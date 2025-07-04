@@ -3,14 +3,11 @@ package com.example.movie_booking_backend.common.utils;
 import jakarta.mail.internet.MimeMessage;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.FileSystemResource;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
-import java.util.Objects;
 @Service
 public class EmailApi {
     private JavaMailSender mailSender;
@@ -20,30 +17,7 @@ public class EmailApi {
     public EmailApi(JavaMailSender mailSender) {
         this.mailSender = mailSender;
     }
-    /**
-     * 发送纯文本的邮件
-     * @param to 收件人
-     * @param subject 主题
-     * @param content 内容
-     * @return 是否成功
-     */
-    @SneakyThrows(Exception.class)
-    public boolean sendGeneralEmail(String subject, String content, String... to){
-        // 创建邮件消息
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(from);
-        // 设置收件人
-        message.setTo(to);
-        // 设置邮件主题
-        message.setSubject(subject);
-        // 设置邮件内容
-        message.setText(content);
 
-        // 发送邮件
-        mailSender.send(message);
-
-        return true;
-    }
     /**
      * 发送html的邮件
      * @param to 收件人
@@ -71,85 +45,65 @@ public class EmailApi {
         return true;
 
     }
-    /**
-     * 发送带附件的邮件
-     * @param to 收件人
-     * @param subject 主题
-     * @param content 内容
-     * @param filePaths 附件路径
-     * @return 是否成功
-     */
-    @SneakyThrows(Exception.class)
-    public boolean sendAttachmentsEmail(String subject, String content, String[] to, String[] filePaths) {
-        // 创建邮件消息
-        MimeMessage mimeMessage = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true);
-        helper.setFrom(from);
-        // 设置收件人
-        helper.setTo(to);
-        // 设置邮件主题
-        helper.setSubject(subject);
-        // 设置邮件内容
-        helper.setText(content,true);
-
-        // 添加附件
-        if (filePaths != null) {
-            for (String filePath : filePaths) {
-                FileSystemResource file = new FileSystemResource(new File(filePath));
-                helper.addAttachment(Objects.requireNonNull(file.getFilename()), file);
-
-            }
-        }
-        // 发送邮件
-        mailSender.send(mimeMessage);
-        return true;
-    }
 
     /**
-     * 发送带静态资源的邮件
-     * @param to 收件人
-     * @param subject 主题
-     * @param content 内容
-     * @param rscPath 静态资源路径
-     * @param rscId 静态资源id
-     * @return 是否成功
+     * 发送验证码邮件
+     * @param to 收件人邮箱
+     * @param verificationCode 验证码
+     * @return 是否发送成功
      */
-    @SneakyThrows(Exception.class)
-    public boolean sendInlineResourceEmail(String subject, String content, String to, String rscPath, String rscId) {
-        // 创建邮件消息
-        MimeMessage mimeMessage = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true);
-        // 设置发件人
-        helper.setFrom(from);
-        // 设置收件人
-        helper.setTo(to);
-        // 设置邮件主题
-        helper.setSubject(subject);
-
-        //html内容图片
-        String contentHtml = "<html><body>这是邮件的内容，包含一个图片：<img src=\'cid:" + rscId + "\'>"+content+"</body></html>";
-
-        helper.setText(contentHtml, true);
-        //指定讲资源地址
-        FileSystemResource res = new FileSystemResource(new File(rscPath));
-        helper.addInline(rscId, res);
-
-        mailSender.send(mimeMessage);
-        return true;
-    }
-
-    @SneakyThrows(Exception.class)
     public boolean sendVerificationCodeEmail(String to, String verificationCode) {
-        String subject = "您的验证码";
-        String content = "欢迎注册凶凶凶影院,您的验证码是: " + verificationCode + "，该验证码5分钟内有效。";
-        System.out.println("马上发送");
-        System.out.println(to);
-        return sendGeneralEmail(subject, content, to);
+        try {
+            String subject = "您的验证码";
+            String content = "欢迎注册凶凶凶影院,您的验证码是: " + verificationCode + "，该验证码5分钟内有效。";
+            System.out.println("开始发送验证码邮件到: " + to);
+            
+            // 创建邮件消息 - 直接使用SimpleMailMessage而不是调用sendGeneralEmail以便更好地控制异常
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(from);
+            message.setTo(to);
+            message.setSubject(subject);
+            message.setText(content);
+            
+            // 发送邮件
+            mailSender.send(message);
+            
+            System.out.println("验证码邮件发送成功: " + to);
+            return true;
+        } catch (Exception e) {
+            System.err.println("发送验证码邮件失败: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
     }
-    @SneakyThrows(Exception.class)
-    public Boolean sendPassWordEmail(String passWord,String to ) {
-        String subject = "您的密码";
-        String content = "您的密码是: " +passWord;
-        return sendGeneralEmail(subject, content,to);
+    /**
+     * 发送密码邮件
+     * @param passWord 密码
+     * @param to 收件人邮箱
+     * @return 是否发送成功
+     */
+    public Boolean sendPassWordEmail(String passWord, String to) {
+        try {
+            String subject = "您的密码";
+            String content = "您的密码是: " + passWord;
+            System.out.println("开始发送密码邮件到: " + to);
+            
+            // 创建邮件消息 - 直接使用SimpleMailMessage而不是调用sendGeneralEmail以便更好地控制异常
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(from);
+            message.setTo(to);
+            message.setSubject(subject);
+            message.setText(content);
+            
+            // 发送邮件
+            mailSender.send(message);
+            
+            System.out.println("密码邮件发送成功: " + to);
+            return true;
+        } catch (Exception e) {
+            System.err.println("发送密码邮件失败: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
     }
 }

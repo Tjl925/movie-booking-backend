@@ -50,6 +50,7 @@ public class MoviesController {
     @ApiOperation("【后台】创建电影")
     @PostMapping
     public JsonResponse<Movies> createMovie(@Valid @RequestBody MovieDTO movieDTO) {
+        System.out.println("Creating movie with DTO: " + movieDTO);
         Movies movie = moviesService.createMovie(movieDTO);
         return JsonResponse.success(movie, "电影创建成功");
     }
@@ -245,6 +246,18 @@ public class MoviesController {
     @GetMapping("/analyze-movie")
     public JsonResponse<Map<String, Object>> analyzeMovie(){
         return JsonResponse.success(moviesService.analyzeMovie());
-        }
+    }
+    
+    @ApiOperation("获取不同类型电影的数量和票房")
+    @GetMapping("/analyze-genre-box-office")
+    public JsonResponse<List<Map<String, Object>>> analyzeGenreBoxOffice(){
+        return JsonResponse.success(moviesService.analyzeGenreBoxOffice());
+    }
+    
+    @ApiOperation("获取不同区域电影的数量和票房")
+    @GetMapping("/analyze-region-box-office")
+    public JsonResponse<List<Map<String, Object>>> analyzeRegionBoxOffice(){
+        return JsonResponse.success(moviesService.analyzeRegionBoxOffice());
+    }
 }
 

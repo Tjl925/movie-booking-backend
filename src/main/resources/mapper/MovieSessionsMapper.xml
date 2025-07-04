@@ -13,41 +13,6 @@
         <result column="updated_at" property="updatedAt" />
         <result column="is_deleted" property="deleted" />
     </resultMap>
-    <!-- 根据电影ID查询可用场次 -->
-<!--    <select id="findSessionInfoByMovieId" resultType="com.example.movie_booking_backend.model.vo.SessionInfoVO">-->
-<!--        SELECT-->
-<!--            ms.id AS sessionId,-->
-<!--            ms.session_time AS sessionTime,-->
-<!--            ms.end_time AS endTime,-->
-<!--            h.hall_name AS hallName,-->
-<!--            h.hall_type AS hallType,-->
-<!--            h.price_multiplier AS priceAdjustment,-->
-<!--            h.total_seats AS totalSeats,-->
-<!--            m.base_price AS basePrice,-->
-<!--            m.base_price  AS minPrice,-->
-
-<!--            (-->
-<!--                SELECT COUNT(*)-->
-<!--                FROM seats_sessions ss-->
-<!--                         JOIN seats s ON ss.seat_id = s.id-->
-<!--                WHERE ss.session_id = ms.id-->
-<!--                  AND ss.status = 'AVAILABLE'-->
-<!--                  AND ss.is_deleted = false-->
-<!--                  AND s.is_deleted = false-->
-<!--            ) AS availableSeats-->
-<!--        FROM-->
-<!--            movie_sessions ms-->
-<!--                JOIN halls h ON ms.hall_id = h.id-->
-<!--                JOIN movies m ON ms.movie_id = m.id-->
-<!--        WHERE-->
-<!--            ms.movie_id = #{movieId}-->
-<!--          AND ms.is_deleted = false-->
-<!--          AND h.is_deleted = false-->
-<!--          AND m.is_deleted = false-->
-<!--        AND ms.session_time >= #{todayStart}-->
-<!--        AND ms.session_time < #{tenDaysLaterEnd}-->
-<!--        ORDER BY ms.session_time ASC-->
-<!--    </select>-->
     
     <!-- 根据关键字查询场次ID列表（匹配电影标题或影厅名称） -->
     <select id="findSessionIdsByKeyword" resultType="java.lang.Long">
@@ -65,34 +30,30 @@
           AND m.is_deleted = false
           AND h.is_deleted = false
     </select>
+
     <select id="findSessionInfoByMovieIdWithDateRange"
             resultType="com.example.movie_booking_backend.model.vo.SessionInfoVO">
     <![CDATA[
-        SELECT
-            ms.id AS sessionId,
-            ms.session_time AS sessionTime,
-            ms.end_time AS endTime,
-            h.hall_name AS hallName,
-            h.hall_type AS hallType,
-            h.price_multiplier AS priceAdjustment,
-            h.total_seats AS totalSeats,
-            m.base_price AS basePrice,
-            m.base_price AS minPrice,
-            (
-                SELECT COUNT(*)
+        SELECT ms.id                        AS sessionId,
+               ms.session_time              AS sessionTime,
+               ms.end_time                  AS endTime,
+               h.hall_name                  AS hallName,
+               h.hall_type                  AS hallType,
+               h.price_multiplier           AS priceAdjustment,
+               h.total_seats                AS totalSeats,
+               m.base_price                 AS basePrice,
+               m.base_price                 AS minPrice,
+               (SELECT COUNT(*)
                 FROM seats_sessions ss
                          JOIN seats s ON ss.seat_id = s.id
                 WHERE ss.session_id = ms.id
                   AND ss.status = 'AVAILABLE'
                   AND ss.is_deleted = false
-                  AND s.is_deleted = false
-            ) AS availableSeats
-        FROM
-            movie_sessions ms
-                JOIN halls h ON ms.hall_id = h.id
-                JOIN movies m ON ms.movie_id = m.id
-        WHERE
-            ms.movie_id = #{movieId}
+                  AND s.is_deleted = false) AS availableSeats
+        FROM movie_sessions ms
+                 JOIN halls h ON ms.hall_id = h.id
+                 JOIN movies m ON ms.movie_id = m.id
+        WHERE ms.movie_id = #{movieId}
           AND ms.is_deleted = false
           AND h.is_deleted = false
           AND m.is_deleted = false

@@ -25,7 +25,6 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -256,23 +255,29 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
                         .set("is_deleted", true)
                         .set("updated_at", LocalDateTime.now())
         );
-
     }
 
     @Override
-    public List<SessionVO> getSessionsByMovieAndDate(Long movieId, LocalDate date) {
-        LocalDateTime startOfDay = date.atStartOfDay();
-        LocalDateTime endOfDay = date.plusDays(1).atStartOfDay();
+    @Cacheable(value = "movieSessions", key = "#movieId + '_' + T(java.time.LocalDate).now()")
+    public List<SessionInfoVO> getSessionInfosByMovieId(Long movieId) {
+        // 获取当前时间
+        LocalDateTime now = LocalDateTime.now();
+        // 今天的00:00:00
+        LocalDateTime todayStart = now.toLocalDate().atStartOfDay();
+        // 7天后的23:59:59
+        LocalDateTime tenDaysLaterEnd = todayStart.plusDays(7).with(LocalTime.MAX);
 
-        QueryWrapper<MovieSessions> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("movie_id", movieId)
-                .eq("is_deleted", false)
-                .ge("session_time", startOfDay)
-                .lt("session_time", endOfDay)
-                .orderByAsc("session_time");
+        // 查询7天内的场次
+        List<SessionInfoVO> sessions = movieSessionsMapper.findSessionInfoByMovieIdWithDateRange(
+                movieId,
+                todayStart,
+                tenDaysLaterEnd
+        );
 
-        List<MovieSessions> sessions = this.list(queryWrapper);
-        return sessions.stream().map(this::mapToSessionVO).collect(Collectors.toList());
+        // 过滤掉已过期的场次（当前时间之前的）
+        return sessions.stream()
+                .filter(session -> session.getSessionTime().isAfter(now)) // 减去1分钟避免边界问题
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -281,45 +286,6 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
         if (session == null) throw new BusinessException("场次不存在");
         return mapToSessionVO(session);
     }
-
-    @Override
-    public List<SeatVO> getSeatStatusForSession(Long sessionId) {
-        MovieSessions session = this.getById(sessionId);
-        if (session == null) throw new BusinessException("场次不存在");
-
-        // 1. 获取影厅的所有座位
-        List<Seats> allSeatsInHall = seatsService.list(
-                new QueryWrapper<Seats>()
-                        .eq("hall_id", session.getHallId())
-                        .eq("is_deleted", false)
-        );
-
-        // 2. 获取座位在该场次的状态（从SeatsSessions表）
-        List<com.example.movie_booking_backend.model.domain.SeatsSessions> seatsSessions = seatsSessionsMapper.selectList(
-                new QueryWrapper<com.example.movie_booking_backend.model.domain.SeatsSessions>()
-                        .eq("session_id", sessionId)
-        );
-        Map<Long, String> seatStatusMap = seatsSessions.stream()
-                .collect(Collectors.toMap(com.example.movie_booking_backend.model.domain.SeatsSessions::getSeatId, com.example.movie_booking_backend.model.domain.SeatsSessions::getStatus));
-
-        // 3. 转换为SeatVO并设置状态
-        return allSeatsInHall.stream()
-                .map(seat -> {
-                    SeatVO seatVO = new SeatVO();
-                    seatVO.setId(seat.getId());
-                    seatVO.setRowNumber(seat.getSeatRow());
-                    seatVO.setColumnNumber(seat.getSeatColumn());
-                    seatVO.setSeatType(seat.getSeatType());
-                    seatVO.setPriceMultiplier(seat.getPriceMultiplier());
-
-                    // 从seatStatusMap获取状态，默认AVAILABLE
-                    String status = seatStatusMap.getOrDefault(seat.getId(), "AVAILABLE");
-                    seatVO.setStatus(status);
-                    return seatVO;
-                })
-                .collect(Collectors.toList());
-    }
-
 
     @Override
     public ConflictCheckVO checkTimeConflict(Long hallId, LocalDateTime startTime, LocalDateTime endTime, Long excludeSessionId) {
@@ -361,29 +327,6 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
         return result;
     }
 
-    @Override
-    @Cacheable(value = "movieSessions", key = "#movieId + '_' + T(java.time.LocalDate).now()")
-    public List<SessionInfoVO> getSessionInfosByMovieId(Long movieId) {
-        // 获取当前时间
-        LocalDateTime now = LocalDateTime.now();
-        // 今天的00:00:00
-        LocalDateTime todayStart = now.toLocalDate().atStartOfDay();
-        // 7天后的23:59:59
-        LocalDateTime tenDaysLaterEnd = todayStart.plusDays(7).with(LocalTime.MAX);
-
-        // 查询7天内的场次
-        List<SessionInfoVO> sessions = movieSessionsMapper.findSessionInfoByMovieIdWithDateRange(
-                movieId,
-                todayStart,
-                tenDaysLaterEnd
-        );
-
-        // 过滤掉已过期的场次（当前时间之前的）
-        return sessions.stream()
-                .filter(session -> session.getSessionTime().isAfter(now)) // 减去1分钟避免边界问题
-                .collect(Collectors.toList());
-    }
-
     private SessionVO mapToSessionVO(MovieSessions session) {
         SessionVO vo = new SessionVO();
         BeanUtils.copyProperties(session, vo);
@@ -391,101 +334,6 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
         vo.setHall(hallsMapper.selectById(session.getHallId()));
         return vo;
     }
-
-
-//    @Transactional
-//    @Override
-//    public void updateSeatsStatus(List<SeatStatusUpdateDTO> updates) {
-//        for (SeatStatusUpdateDTO update : updates) {
-//            Seats seat = seatsService.getById(update.getId());
-//            if (seat != null) {
-//                seat.setStatus(update.getStatus());
-//                seat.setUpdatedAt(LocalDateTime.now());
-//                seatsService.updateById(seat);
-//            }
-//        }
-//    }
-
-//    @Override
-//    public SessionSeatsVO getSeatsForSelection(Long sessionId) {
-//        // 1. 验证场次是否存在并获取影厅ID
-//        MovieSessions session = this.getById(sessionId);
-//        if (session == null) {
-//            throw new BusinessException("场次不存在");
-//        }
-//
-//        // 2. 获取影厅信息
-//        Halls hall = hallsMapper.selectById(session.getHallId());
-//        if (hall == null) {
-//            throw new BusinessException("影厅信息不存在");
-//        }
-//
-//        // 3. 获取影厅所有有效座位
-//        List<Seats> allSeatsInHall = seatsService.list(
-//                new QueryWrapper<Seats>()
-//                        .eq("hall_id", session.getHallId())
-//                        .eq("is_deleted", false)
-//        );
-//        // 5. 转换并设置座位状态（完全手动映射）
-//        List<SeatVO> seatVOs = allSeatsInHall.stream()
-//                .map(seat -> {
-//                    SeatVO seatVO = new SeatVO();
-//                    // 手动映射所有字段
-//                    seatVO.setId(seat.getId());
-//                    seatVO.setRowNumber(seat.getSeatRow());     // 关键修改点
-//                    seatVO.setColumnNumber(seat.getSeatColumn()); // 关键修改点
-//
-//                    // 状态设置
-//                    switch (seat.getStatus()) {
-//                        case "RESERVED":
-//                            seatVO.setStatus("RESERVED");
-//                            break;
-//                        case "MAINTENANCE":
-//                            seatVO.setStatus("MAINTENANCE");
-//                            break;
-//                        case "OCCUPIED":
-//                            seatVO.setStatus("OCCUPIED");
-//                            break;
-//                        default:
-//                            seatVO.setStatus("AVAILABLE");
-//                    }
-//                    return seatVO;
-//                })
-//                .collect(Collectors.toList());
-//
-//        // 6. 封装返回结果
-//        SessionSeatsVO result = new SessionSeatsVO();
-//        result.setSeats(seatVOs);
-//        result.setTotalSeats(hall.getTotalSeats());
-//        result.setTotalRows(hall.getTotalRows());
-//        result.setTotalColumns(hall.getTotalColumns());
-//
-//        return result;
-//    }
-
-//    @Transactional
-//    @Override
-//    public void updateSeatStatus(SeatSelectionDTO dto) {
-//        if (dto.getSeatId() == null || dto.getStatus() == null) {
-//            throw new BusinessException("座位ID和状态不能为空");
-//        }
-//
-//        Seats seat = seatsService.getById(dto.getSeatId());
-//        if (seat == null) {
-//            throw new BusinessException("座位不存在");
-//        }
-//
-//        // 验证状态转换是否合法
-//        if ("RESERVED".equals(dto.getStatus())) {
-//            if (!"AVAILABLE".equals(seat.getStatus())) {
-//                throw new BusinessException("只能预定可用座位");
-//            }
-//        }
-//
-//        seat.setStatus(dto.getStatus());
-//        seat.setUpdatedAt(LocalDateTime.now());
-//        seatsService.updateById(seat);
-//    }
 
     @Override
     public Page<SessionVO> getSessionList(Integer page, Integer size, String keyword) {
@@ -654,5 +502,43 @@ public class MovieSessionsServiceImpl extends ServiceImpl<MovieSessionsMapper, M
                 .mapToDouble(BigDecimal::doubleValue)
                 .sum();
     }
-}
 
+    @Override
+    @Transactional
+    public List<Object> analyzeWeekBoxOffice() {
+        List<Object> result = new java.util.ArrayList<>();
+        LocalDate today = LocalDate.now();
+        // 过去7天（含今天），从前6天到今天
+        for (int i = 6; i >= 0; i--) {
+            LocalDate day = today.minusDays(i);
+            LocalDateTime startOfDay = day.atStartOfDay();
+            LocalDateTime endOfDay = day.plusDays(1).atStartOfDay();
+
+            // 查询当天所有已结束场次的ID
+            List<Long> sessionIds = movieSessionsMapper.selectList(
+                    new QueryWrapper<MovieSessions>()
+                            .ge("session_time", startOfDay)
+                            .lt("session_time", endOfDay)
+                            .ge("end_time", startOfDay)
+                            .lt("end_time", LocalDateTime.now())
+                            .select("id")
+            ).stream().map(MovieSessions::getId).collect(Collectors.toList());
+
+            double boxOffice = 0.0;
+            if (!sessionIds.isEmpty()) {
+                List<Orders> completedOrders = ordersMapper.selectList(
+                        new QueryWrapper<Orders>()
+                                .in("session_id", sessionIds)
+                                .eq("status", "COMPLETED")
+                );
+                boxOffice = completedOrders.stream()
+                        .map(Orders::getTotalAmount)
+                        .filter(amount -> amount != null)
+                        .mapToDouble(BigDecimal::doubleValue)
+                        .sum();
+            }
+            result.add(boxOffice);
+        }
+        return result;
+    }
+}

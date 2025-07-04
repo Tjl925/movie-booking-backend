@@ -93,34 +93,6 @@ public class UsersServiceImpl extends ServiceImpl<UsersMapper, Users> implements
 
     @Override
     @Transactional
-    public Users createUser(UserCreationDTO userCreationDTO) {
-        // 检查用户名是否已存在
-        if (this.getOne(new QueryWrapper<Users>().eq("username", userCreationDTO.getUsername()).eq("is_deleted", false)) != null) {
-            throw new BusinessException("用户名已存在");
-        }
-
-        // 检查角色是否存在
-        Roles role = rolesMapper.selectById(userCreationDTO.getRoleId());
-        if (role == null || role.getDeleted()) {
-            throw new BusinessException("指定的角色不存在");
-        }
-
-        Users user = new Users();
-        BeanUtils.copyProperties(userCreationDTO, user);
-
-        user.setPassword(userCreationDTO.getPassword()); // 使用明文密码
-        user.setStatus("ACTIVE");
-        user.setLoginCount(0);
-        user.setCreatedAt(LocalDateTime.now());
-        user.setUpdatedAt(LocalDateTime.now());
-        user.setDeleted(false);
-
-        this.save(user);
-        return user;
-    }
-
-    @Override
-    @Transactional
     public Users updateUser(Long id, UserUpdateDTO userUpdateDTO) {
         Users existingUser = this.getById(id);
         if (existingUser == null || existingUser.getDeleted()) {

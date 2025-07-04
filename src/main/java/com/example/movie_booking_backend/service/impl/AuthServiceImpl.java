@@ -29,8 +29,6 @@ public class AuthServiceImpl implements IAuthService {
     @Autowired
     private RolesMapper rolesMapper;
 
-    // 移除PasswordEncoder注入
-
     @Autowired
     private JwtUtils jwtUtils;
 
@@ -170,7 +168,6 @@ public class AuthServiceImpl implements IAuthService {
     @Override
     public void logout(String token) {
         System.out.println("退出成功");
-        // 简单实现，直接返回，不做处理
     }
 
     @Override

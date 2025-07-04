@@ -27,13 +27,6 @@
         WHERE id = #{id} AND is_deleted = 0
     </select>
 
-    <!-- 根据名称查找未删除的用户分组 -->
-    <select id="selectByNameAndIsDeletedFalse" resultMap="BaseResultMap">
-        SELECT id, name, description, type, created_at, updated_at, is_deleted
-        FROM user_groups
-        WHERE name = #{name} AND is_deleted = 0
-    </select>
-
     <!-- 根据用户ID查找该用户所属的所有分组 -->
     <select id="selectGroupsByUserId" resultMap="BaseResultMap">
         SELECT
@@ -41,13 +34,6 @@
         FROM user_groups g
         JOIN user_group_relations r ON g.id = r.group_id
         WHERE r.user_id = #{userId} AND g.is_deleted = 0 AND r.is_deleted = 0
-    </select>
-
-    <!-- 根据类型查找未删除的用户分组 -->
-    <select id="selectByTypeAndIsDeletedFalse" resultMap="BaseResultMap">
-        SELECT id, name, description, type, created_at, updated_at, is_deleted
-        FROM user_groups
-        WHERE type = #{type} AND is_deleted = 0
     </select>
 
 </mapper>

@@ -44,7 +44,5 @@ public interface IOrdersService extends IService<Orders> {
     // 根据订单号查询订单
     Orders getOrderByOrderNumber(String orderNumber);
 
-    Boolean getOrderRatedStatus(Long id);
-
     List<OrderVO> getAllOrdersByUserId(Long userId);
 }

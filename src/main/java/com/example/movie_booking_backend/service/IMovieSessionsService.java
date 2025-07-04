@@ -3,17 +3,12 @@ package com.example.movie_booking_backend.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.movie_booking_backend.model.domain.MovieSessions;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.example.movie_booking_backend.model.dto.SeatSelectionDTO;
-import com.example.movie_booking_backend.model.dto.SeatStatusUpdateDTO;
 import com.example.movie_booking_backend.model.dto.SessionDTO;
 import com.example.movie_booking_backend.model.vo.ConflictCheckVO;
-import com.example.movie_booking_backend.model.vo.SeatVO;
-import com.example.movie_booking_backend.model.vo.SessionInfoVO;
 import com.example.movie_booking_backend.model.vo.SeatsSessionsVO;
+import com.example.movie_booking_backend.model.vo.SessionInfoVO;
 import com.example.movie_booking_backend.model.vo.SessionVO;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -32,13 +27,7 @@ public interface IMovieSessionsService extends IService<MovieSessions> {
 
     void deleteSession(Long sessionId);
 
-    List<SessionVO> getSessionsByMovieAndDate(Long movieId, LocalDate date);
-
     SessionVO getSessionDetails(Long sessionId);
-
-    List<SeatVO> getSeatStatusForSession(Long sessionId);
-
-    List<SessionInfoVO> getSessionInfosByMovieId(Long movieId);
 
     SeatsSessionsVO getSeatsForSelection(Long id);
 
@@ -46,7 +35,11 @@ public interface IMovieSessionsService extends IService<MovieSessions> {
 
     Page<SessionVO> getSessionList(Integer page, Integer size, String keyword);
 
+    List<SessionInfoVO> getSessionInfosByMovieId(Long movieId);
+
     Integer analyzeSession();
 
     Object analyzeSessionBoxOffice();
+
+    List<Object> analyzeWeekBoxOffice();
 }

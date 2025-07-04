@@ -2,8 +2,6 @@ package com.example.movie_booking_backend.web.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.movie_booking_backend.common.JsonResponse;
-import com.example.movie_booking_backend.common.exception.BusinessException;
-import com.example.movie_booking_backend.model.dto.SeatSelectionDTO;
 import com.example.movie_booking_backend.model.dto.SessionDTO;
 import com.example.movie_booking_backend.model.vo.*;
 import com.example.movie_booking_backend.service.IMovieSessionsService;
@@ -12,10 +10,8 @@ import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -36,8 +32,6 @@ public class MovieSessionsController {
 
     @Autowired
     private IMovieSessionsService movieSessionsService;
-
-    // ================= 后台管理接口 =================
 
     @ApiOperation("【后台】创建场次")
     @PostMapping
@@ -78,30 +72,11 @@ public class MovieSessionsController {
         return JsonResponse.success(conflictCheckVO);
     }
 
-    // ================= 前台公共接口 =================
-
-    @ApiOperation("【前台】获取某电影某天的所有场次")
-    @GetMapping("/public/movie/{movieId}/date/{date}")
-    public JsonResponse<List<SessionVO>> getSessionsForMovieAndDate(
-            @PathVariable Long movieId,
-            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        List<SessionVO> sessions = movieSessionsService.getSessionsByMovieAndDate(movieId, date);
-        return JsonResponse.success(sessions);
-    }
-
     @ApiOperation("【前台】获取场次详情")
     @GetMapping("/public/{id}")
     public JsonResponse<SessionVO> getSessionDetails(@PathVariable Long id) {
         SessionVO sessionVO = movieSessionsService.getSessionDetails(id);
         return JsonResponse.success(sessionVO);
-    }
-
-    @ApiOperation("【前台】获取某电影的所有场次完整信息")
-    @GetMapping("/public/movie/{movieId}/session-infos")
-    public JsonResponse<List<SessionInfoVO>> getSessionInfos(
-            @PathVariable Long movieId) {
-        List<SessionInfoVO> result = movieSessionsService.getSessionInfosByMovieId(movieId);
-        return JsonResponse.success(result);
     }
 
     @ApiOperation("【前台】获取场次座位选择状态")
@@ -122,6 +97,14 @@ public class MovieSessionsController {
         return JsonResponse.success(pages);
     }
 
+    @ApiOperation("【前台】获取某电影的所有场次完整信息")
+    @GetMapping("/public/movie/{movieId}/session-infos")
+    public JsonResponse<List<SessionInfoVO>> getSessionInfos(
+            @PathVariable Long movieId) {
+        List<SessionInfoVO> result = movieSessionsService.getSessionInfosByMovieId(movieId);
+        return JsonResponse.success(result);
+    }
+
     @ApiOperation("获取今日场次数")
     @GetMapping("/analyze-session")
     public JsonResponse<Integer> analyzeSession(){
@@ -132,6 +115,12 @@ public class MovieSessionsController {
     @GetMapping("/analyze-session-box-office")
     public JsonResponse<Object> analyzeSessionBoxOffice(){
         return JsonResponse.success(movieSessionsService.analyzeSessionBoxOffice());
+    }
+
+    @ApiOperation("获取过去一周票房")
+    @GetMapping("/analyze-week-box-office")
+    public JsonResponse <List<Object>> analyzeWeekBoxOffice(){
+        return JsonResponse.success(movieSessionsService.analyzeWeekBoxOffice());
     }
 }
 

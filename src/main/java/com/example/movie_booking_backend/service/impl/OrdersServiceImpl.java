@@ -17,12 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.ArrayList;
@@ -171,15 +168,6 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders> impleme
     @Override
     public Orders getOrderByOrderNumber(String orderNumber) {
         return this.getOne(new QueryWrapper<Orders>().eq("order_number", orderNumber));
-    }
-
-    @Override
-    public Boolean getOrderRatedStatus(Long orderId) {
-        Orders order = this.getById(orderId);
-        if (order == null) {
-            throw new BusinessException("订单不存在");
-        }
-        return order.getIsRated();
     }
 
     @Override
