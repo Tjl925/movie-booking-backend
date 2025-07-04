@@ -2,6 +2,7 @@ package com.example.movie_booking_backend.web.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.movie_booking_backend.common.JsonResponse;
+import com.example.movie_booking_backend.common.exception.BusinessException;
 import com.example.movie_booking_backend.model.domain.Users;
 import com.example.movie_booking_backend.model.dto.*;
 import com.example.movie_booking_backend.model.vo.UserVO;
@@ -19,9 +20,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 前端控制器
+ *
  * @author tjl
- * @since 2025-06-23
  * @version v1.0
+ * @since 2025-06-23
  */
 @Api(tags = "用户管理")
 @RestController
@@ -70,14 +72,19 @@ public class UsersController {
 
     @ApiOperation("更新用户个人信息")
     @PostMapping("/profile/{id}")
-    public JsonResponse<UserVO> updateUserProfile(
-            @PathVariable Long id,
-            @RequestBody UserProfileUpdateDTO updateDTO
-    ) {
-        Users user = usersService.updateUserProfile(id, updateDTO);
-        UserVO vo = new UserVO();
-        BeanUtils.copyProperties(user, vo);
-        return JsonResponse.success(vo, "个人信息更新成功");
+    public JsonResponse<UserVO> updateUserProfile(@PathVariable Long id, @RequestBody UserProfileUpdateDTO updateDTO) {
+        try {
+            Users user = usersService.updateUserProfile(id, updateDTO);
+            UserVO vo = new UserVO();
+            BeanUtils.copyProperties(user, vo);
+            return JsonResponse.success(vo, "个人信息更新成功");
+        } catch (BusinessException e) {
+            return JsonResponse.failure(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return JsonResponse.failure(e.getMessage());
+        } catch (Exception e) {
+            return JsonResponse.failure("系统错误，请稍后再试");
+        }
     }
 
 
@@ -142,6 +149,7 @@ public class UsersController {
         usersService.resetPassword(id, resetPasswordDTO.getNewPassword());
         return JsonResponse.successMessage("密码重置成功");
     }
+
     @ApiOperation("上传用户头像")
     @PostMapping("/{id}/avatar")
     public JsonResponse<String> uploadAvatar(

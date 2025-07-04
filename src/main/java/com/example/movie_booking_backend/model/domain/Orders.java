@@ -73,14 +73,6 @@ public class Orders implements Serializable {
     @TableField("payment_time")
     private LocalDateTime paymentTime;
 
-    @ApiModelProperty(value = "取消时间")
-    @TableField("cancel_time")
-    private LocalDateTime cancelTime;
-
-    @ApiModelProperty(value = "取消原因")
-    @TableField("cancel_reason")
-    private String cancelReason;
-
     @ApiModelProperty(value = "创建时间")
     @TableField("created_at")
     private LocalDateTime createdAt;

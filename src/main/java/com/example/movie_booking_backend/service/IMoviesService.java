@@ -69,4 +69,6 @@ public interface IMoviesService extends IService<Movies> {
     List<Map<String, Object>> analyzeGenreBoxOffice();
     
     List<Map<String, Object>> analyzeRegionBoxOffice();
+
+    List<Movies> getMovies(String status);
 }
