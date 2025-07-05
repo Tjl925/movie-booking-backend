@@ -104,6 +104,12 @@ public class MoviesController {
     }
 
     // ================= 前台公共接口 =================
+    @ApiOperation("【前台】分页获取即将上映的电影列表")
+    @GetMapping("/public/all")
+    public JsonResponse<List<Movies>> getMovies(
+            @ApiParam("每页大小") @RequestParam String status) {
+        return JsonResponse.success(moviesService.getMovies(status));
+    }
 
     @ApiOperation("【前台】分页获取正在上映的电影列表")
     @GetMapping("/public/showing")
