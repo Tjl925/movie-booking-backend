@@ -867,4 +867,27 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
         
         return result;
     }
+
+    @Override
+    public List<Movies> getMovies(String status) {
+        // 参数校验
+        if (status == null || status.isEmpty()) {
+            throw new IllegalArgumentException("状态参数不能为空");
+        }
+
+        // 根据状态获取电影
+        QueryWrapper<Movies> queryWrapper = new QueryWrapper<>();
+
+        switch (status.toLowerCase()) {
+            case "now_showing":
+                queryWrapper.eq("status", "NOW_SHOWING");
+                break;
+            case "upcoming":
+                queryWrapper.eq("status", "UPCOMING");
+                break;
+            default:
+                throw new IllegalArgumentException("无效的状态参数: " + status);
+        }
+        return moviesMapper.selectList(queryWrapper);
+    }
 }

@@ -2,6 +2,7 @@ package com.example.movie_booking_backend.web.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.movie_booking_backend.common.JsonResponse;
+import com.example.movie_booking_backend.common.exception.BusinessException;
 import com.example.movie_booking_backend.model.domain.Users;
 import com.example.movie_booking_backend.model.dto.*;
 import com.example.movie_booking_backend.model.vo.UserVO;
@@ -74,10 +75,18 @@ public class UsersController {
             @PathVariable Long id,
             @RequestBody UserProfileUpdateDTO updateDTO
     ) {
-        Users user = usersService.updateUserProfile(id, updateDTO);
-        UserVO vo = new UserVO();
-        BeanUtils.copyProperties(user, vo);
-        return JsonResponse.success(vo, "个人信息更新成功");
+        try {
+            Users user = usersService.updateUserProfile(id, updateDTO);
+            UserVO vo = new UserVO();
+            BeanUtils.copyProperties(user, vo);
+            return JsonResponse.success(vo, "个人信息更新成功");
+        } catch (BusinessException e) {
+            return JsonResponse.failure(e.getMessage());
+        }catch (IllegalArgumentException e) {
+            return JsonResponse.failure(e.getMessage());
+        } catch (Exception e) {
+            return JsonResponse.failure("系统错误，请稍后再试");
+        }
     }
 
 

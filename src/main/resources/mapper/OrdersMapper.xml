@@ -14,8 +14,6 @@
         <result column="status" property="status" />
         <result column="payment_method" property="paymentMethod" />
         <result column="payment_time" property="paymentTime" />
-        <result column="cancel_time" property="cancelTime" />
-        <result column="cancel_reason" property="cancelReason" />
         <result column="created_at" property="createdAt" />
         <result column="updated_at" property="updatedAt" />
         <result column="is_deleted" property="deleted" />

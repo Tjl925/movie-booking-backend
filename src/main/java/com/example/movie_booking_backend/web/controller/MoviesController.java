@@ -94,6 +94,7 @@ public class MoviesController {
     @ApiOperation("【后台】上传电影视频")
     @PostMapping("/{id}/video")
     public JsonResponse<String> uploadVideo(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
+        System.out.println("电影ID"+id);
         try {
             String url = moviesService.uploadVideo(id, file);
             return JsonResponse.success(url, "视频上传成功");
@@ -109,6 +110,7 @@ public class MoviesController {
     public JsonResponse<Page<Movies>> getShowingMovies(
             @ApiParam("页码") @RequestParam(defaultValue = "1") Integer current,
             @ApiParam("每页大小") @RequestParam(defaultValue = "10") Integer size) {
+        System.out.println("当前页号："+current+"页面大小"+size);
         Page<Movies> page = new Page<>(current, size);
         return JsonResponse.success(moviesService.listMovies(page, null, "NOW_SHOWING"));
     }
@@ -120,6 +122,14 @@ public class MoviesController {
             @ApiParam("每页大小") @RequestParam(defaultValue = "10") Integer size) {
         Page<Movies> page = new Page<>(current, size);
         return JsonResponse.success(moviesService.listMovies(page, null, "UPCOMING"));
+    }
+
+
+    @ApiOperation("【前台】分页获取即将上映的电影列表")
+    @GetMapping("/public/all")
+    public JsonResponse<List<Movies>> getMovies(
+            @ApiParam("每页大小") @RequestParam String status) {
+        return JsonResponse.success(moviesService.getMovies(status));
     }
 
     @ApiOperation("【前台】根据ID获取电影详情")
