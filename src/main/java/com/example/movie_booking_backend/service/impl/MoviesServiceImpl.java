@@ -303,10 +303,8 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
                 .distinct()
                 .collect(Collectors.toList());
 
-        // 2. 获取候选电影（排除已看过的）
-        List<Movies> candidates = getCandidateMovies(
-                watchedMovies.stream().map(Movies::getId).collect(Collectors.toSet())
-        );
+        // 2. 获取候选电影
+        List<Movies> candidates = getCandidateMovies();
 
         // 3. 计算推荐电影（最多5部）
         List<Movies> recommendations = new ArrayList<>();
@@ -377,10 +375,9 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
         return preference;
     }
 
-    private List<Movies> getCandidateMovies(Set<Long> excludedMovieIds) {
+    private List<Movies> getCandidateMovies() {
         return moviesMapper.selectList(
                 new QueryWrapper<Movies>()
-                        .notIn(!excludedMovieIds.isEmpty(), "id", excludedMovieIds)
                         .eq("is_deleted", false)
         );
     }

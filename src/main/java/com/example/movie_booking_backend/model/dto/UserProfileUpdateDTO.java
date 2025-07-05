@@ -3,6 +3,7 @@ package com.example.movie_booking_backend.model.dto;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -18,6 +19,7 @@ public class UserProfileUpdateDTO {
     @ApiModelProperty(value = "邮箱", example = "newuser@example.com")
     private String email;
 
+    @Pattern(regexp = "^1[3-9]\\d{9}$", message = "手机号格式不正确")
     @ApiModelProperty(value = "手机号", example = "13900139000")
     private String phone;
 
