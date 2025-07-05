@@ -890,5 +890,4 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
         }
         return moviesMapper.selectList(queryWrapper);
     }
-
 }
