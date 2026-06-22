@@ -304,7 +304,12 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
                 .collect(Collectors.toList());
 
         // 2. 获取候选电影
-        List<Movies> candidates = getCandidateMovies();
+        List<Movies> candidates = getCandidateMovies().stream()
+                .filter(m -> !watchedMovies.contains(m))
+                .collect(Collectors.toList());
+        double maxLogView = candidates.stream()
+                .mapToDouble(m -> Math.log10(m.getViewCount() + 1))
+                .max().orElse(1);  // 获取log10(观影人数最大值)
 
         // 3. 计算推荐电影（最多5部）
         List<Movies> recommendations = new ArrayList<>();
@@ -313,7 +318,7 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
             // 3.1 有观看历史：基于偏好推荐
             UserPreference preference = analyzeUserPreferences(watchedMovies);
             recommendations = candidates.stream()
-                    .map(movie -> new ScoredMovie(movie, calculateScore(movie, preference)))
+                    .map(movie -> new ScoredMovie(movie, calculateScore(movie, preference, maxLogView)))
                     .sorted((a, b) -> Double.compare(b.getScore(), a.getScore()))
                     .limit(5)
                     .map(ScoredMovie::getMovie)
@@ -382,32 +387,37 @@ public class MoviesServiceImpl extends ServiceImpl<MoviesMapper, Movies> impleme
         );
     }
 
-    private double calculateScore(Movies movie, UserPreference preference) {
+    private double calculateScore(Movies movie, UserPreference preference,
+                                  double maxLogView) {
         double score = 0;
 
-        // 1. 类型匹配度（权重40%）
+        // 1. 类型匹配 (0~40)
         long genreMatch = Arrays.stream(movie.getGenre().split(","))
                 .map(String::trim)
                 .filter(preference.getFavoriteGenres()::contains)
                 .count();
-        score += genreMatch * 40;
+        double genreScore = (genreMatch / 3.0) * 40;
+        score += genreScore;
 
-        // 2. 导演匹配（权重20%）
+        // 2. 导演匹配 (0~20)
         if (preference.getFavoriteDirectors().contains(movie.getDirector())) {
             score += 20;
         }
 
-        // 3. 电影评分（权重20%）
+        // 3. 评分 (0~20) 假设rating最大10
         if (movie.getRating() != null) {
-            score += movie.getRating().doubleValue() * 2;
+            double ratingScore = (movie.getRating().doubleValue() / 10.0) * 20;
+            score += ratingScore;
         }
 
-        // 4. 电影热度（权重20%）
-        if (movie.getViewCount() != null) {
-            score += Math.log10(movie.getViewCount() + 1) * 2;
+        // 4. 热度 (0~20) 需要传入当前批次最大log值
+        if (movie.getViewCount() != null && maxLogView > 0) {
+            double logView = Math.log10(movie.getViewCount() + 1);
+            double heatScore = (logView / maxLogView) * 20;
+            score += heatScore;
         }
 
-        return score;
+        return score; // 0~100
     }
 
     // --- 辅助类 ---

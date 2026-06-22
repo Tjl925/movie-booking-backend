@@ -346,7 +346,7 @@ CREATE EVENT update_movie_status_event
           AND is_deleted = 0;
     END;
 
--- 创建场次开始时订单状态更新事件（每5分钟执行一次）
+-- 创建场次开始时订单状态更新事件（每2分钟执行一次）
 -- ALTER EVENT update_session_orders_event
 -- ON SCHEDULE EVERY 5 MINUTE;
 CREATE EVENT update_session_orders_event
@@ -364,7 +364,7 @@ CREATE EVENT update_session_orders_event
           AND ms.is_deleted = 0;
     END;
 
--- 创建场次结束时数据处理事件（每5分钟执行一次）
+-- 创建场次结束时数据处理事件（每2分钟执行一次）
 -- ALTER EVENT process_ended_sessions_event
 -- ON SCHEDULE EVERY 5 MINUTE;
 CREATE EVENT process_ended_sessions_event

@@ -56,13 +56,13 @@ public class PayUtils {
                 + "\"body\":\"" + body + "\","
                 + "\"product_code\":\"FAST_INSTANT_TRADE_PAY\"}");
 
-        //请求
+        // 请求
         String result = alipayClient.pageExecute(alipayRequest).getBody();
         System.out.println("返回的结果是："+result );
         return result;
     }
 
-    //    通过订单编号查询
+    // 通过订单编号查询
     public String query(String id){
         // 确保alipayClient已初始化，设置连接超时和读取超时时间
         if (alipayClient == null) {
